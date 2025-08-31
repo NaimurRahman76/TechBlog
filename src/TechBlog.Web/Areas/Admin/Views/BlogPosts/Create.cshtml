@@ -1,0 +1,118 @@
+@model TechBlog.Core.DTOs.CreatePostDto
+
+@{
+    ViewData["Title"] = "Create Blog Post";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-plus me-2"></i>Create New Blog Post
+    </h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Posts
+    </a>
+</div>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+    <partial name="_BlogPostForm" model="Model" />
+
+    <div class="mt-4">
+        <div class="d-flex gap-3">
+            <button type="submit" name="action" value="save" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save as Draft
+            </button>
+            <button type="submit" name="action" value="publish" class="btn btn-success">
+                <i class="fas fa-globe me-2"></i>Publish Post
+            </button>
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.tiny.cloud/1/0xjcjjxa5drlapwxszehgugjdhpgfpxdfol8tugsnxrnql3b/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+    <script>
+        // Initialize TinyMCE
+        tinymce.init({
+            selector: '.tinymce-editor',
+            height: 400,
+            menubar: false,
+            plugins: [
+                // Core editing features
+                'anchor', 'autolink', 'charmap', 'codesample', 'emoticons', 'link', 'lists', 'media', 'searchreplace', 'table', 'visualblocks', 'wordcount',
+                // Premium features
+                'checklist', 'mediaembed', 'casechange', 'formatpainter', 'pageembed', 'a11ychecker', 'tinymcespellchecker', 'permanentpen', 'powerpaste', 'advtable', 'advcode', 'advtemplate', 'ai', 'uploadcare', 'mentions', 'tinycomments', 'tableofcontents', 'footnotes', 'mergetags', 'autocorrect', 'typography', 'inlinecss', 'markdown','importword', 'exportword', 'exportpdf'
+            ],
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link media table mergetags | addcomment showcomments | spellcheckdialog a11ycheck typography uploadcare | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
+            tinycomments_mode: 'embedded',
+            tinycomments_author: 'Author name',
+            mergetags_list: [
+                { value: 'First.Name', title: 'First Name' },
+                { value: 'Email', title: 'Email' },
+            ],
+            ai_request: (request, respondWith) => respondWith.string(() => Promise.reject('See docs to implement AI Assistant')),
+            uploadcare_public_key: 'f161efe378d252fc39a4',
+            content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+        });
+
+        // Tag input functionality
+        const tagInput = document.getElementById('tagsInput');
+        const tagsContainer = document.getElementById('tagsContainer');
+        const hiddenTagsInput = document.getElementById('tagsHidden');
+        let tags = [];
+
+        function addTag(tagName) {
+            if (tagName && !tags.includes(tagName)) {
+                tags.push(tagName);
+                updateTagsDisplay();
+                updateHiddenInput();
+            }
+        }
+
+        function removeTag(tagName) {
+            tags = tags.filter(tag => tag !== tagName);
+            updateTagsDisplay();
+            updateHiddenInput();
+        }
+
+        function updateTagsDisplay() {
+            tagsContainer.innerHTML = tags.map(tag => 
+                `<span class="badge bg-primary me-1 mb-1">
+                    ${tag} 
+                    <button type="button" class="btn-close btn-close-white ms-1" onclick="removeTag('${tag}')" style="font-size: 0.7em;"></button>
+                </span>`
+            ).join('');
+        }
+
+        function updateHiddenInput() {
+            hiddenTagsInput.value = tags.join(',');
+        }
+
+        tagInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const tagName = this.value.trim();
+                if (tagName) {
+                    addTag(tagName);
+                    this.value = '';
+                }
+            }
+        });
+
+        // Auto-generate slug from title (populate read-only slug input)
+        document.getElementById('Title').addEventListener('input', function() {
+            const title = this.value;
+            let slug = title.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-');
+            // Trim leading/trailing hyphens
+            slug = slug.replace(/^[-]+|[-]+$/g, '');
+            const slugField = document.getElementById('slugInput');
+            if (slugField) slugField.value = slug || 'auto-generated-from-title';
+        });
+    </script>
+}

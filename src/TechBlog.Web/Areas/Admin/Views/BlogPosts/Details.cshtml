@@ -1,0 +1,207 @@
+@model TechBlog.Core.DTOs.PostDetailDto
+
+@{
+    ViewData["Title"] = "Blog Post Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-file-alt me-2"></i>Post Details
+    </h1>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">
+            <i class="fas fa-edit me-2"></i>Edit Post
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Posts
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <h1 class="mb-3">@Model.Title</h1>
+                
+                <div class="mb-4">
+                    <span class="badge bg-primary me-2">@Model.CategoryName</span>
+                    @if (Model.IsPublished)
+                    {
+                        <span class="badge bg-success">Published</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">Draft</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Summary))
+                {
+                    <div class="alert alert-info">
+                        <strong>Summary:</strong> @Model.Summary
+                    </div>
+                }
+
+                <div class="mb-2">
+                    <strong>Views:</strong> @Model.ViewCount
+                </div>
+                <div class="mb-2">
+                    <strong>Comments:</strong> @Model.Comments.Count
+                </div>
+
+                <div class="content">
+                    @Html.Raw(Model.Content?.Replace("\n", "<br>"))
+                </div>
+
+                @if (Model.Tags != null && Model.Tags.Any())
+                {
+                    <div class="mt-4">
+                        <h6>Tags:</h6>
+                        @foreach (var tag in Model.Tags)
+                        {
+                            <span class="badge bg-secondary me-2">#@tag</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Post Statistics -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-primary">@Model.ViewCount</h4>
+                            <small class="text-muted">Views</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">@Model.Comments.Count</h4>
+                        <small class="text-muted">Comments</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Post Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Author:</strong><br>
+                    <span class="text-muted">@Model.AuthorName</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Created:</strong><br>
+                    <span class="text-muted">@Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                </div>
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <div class="mb-3">
+                        <strong>Last Updated:</strong><br>
+                        <span class="text-muted">@Model.UpdatedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                    </div>
+                }
+                <div class="mb-3">
+                    <strong>Status:</strong><br>
+                    @if (Model.IsPublished)
+                    {
+                        <span class="badge bg-success">
+                            <i class="fas fa-check-circle me-1"></i>Published
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">
+                            <i class="fas fa-clock me-1"></i>Draft
+                        </span>
+                    }
+                </div>
+                <div class="mb-3">
+                    <strong>URL Slug:</strong><br>
+                    <code class="small">@Model.Slug</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Edit Post
+                    </a>
+                    
+                    @if (Model.IsPublished)
+                    {
+                        <form asp-action="TogglePublish" asp-route-id="@Model.Id" method="post" style="display: inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="fas fa-eye-slash me-2"></i>Unpublish
+                            </button>
+                        </form>
+                        <a href="/Blog/Post/@Model.Slug" target="_blank" class="btn btn-success">
+                            <i class="fas fa-external-link-alt me-2"></i>View Live
+                        </a>
+                    }
+                    else
+                    {
+                        <form asp-action="TogglePublish" asp-route-id="@Model.Id" method="post" style="display: inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-globe me-2"></i>Publish
+                            </button>
+                        </form>
+                    }
+                    
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                        <i class="fas fa-trash me-2"></i>Delete Post
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the post "<strong>@Model.Title</strong>"?</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDelete() {
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+    </script>
+}

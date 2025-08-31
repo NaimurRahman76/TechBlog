@@ -1,0 +1,192 @@
+@model TechBlog.Web.Areas.Admin.Models.CategoryListViewModel
+
+@{
+    ViewData["Title"] = "Manage Categories";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-folder me-2"></i>Categories
+    </h1>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create New Category
+    </a>
+</div>
+
+<!-- Search and Filter -->
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="search" value="@ViewBag.CurrentSearch" class="form-control" placeholder="Search categories...">
+            </div>
+            <div class="col-md-4">
+                <select name="sortBy" class="form-select">
+                    <option value="name" selected="@(ViewBag.SortBy == "name")">Sort by Name</option>
+                    <option value="posts" selected="@(ViewBag.SortBy == "posts")">Sort by Post Count</option>
+                    <option value="created" selected="@(ViewBag.SortBy == "created")">Sort by Created Date</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-search me-2"></i>Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Categories Table -->
+<div class="card shadow">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Categories (@Model.TotalCount)</h6>
+    </div>
+    <div class="card-body">
+        @if (Model.Categories.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Posts Count</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-folder text-white"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">@category.Name</div>
+                                            <small class="text-muted">@category.Slug</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(category.Description))
+                                    {
+                                        <span class="text-muted">@(category.Description.Length > 100 ? category.Description.Substring(0, 100) + "..." : category.Description)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted fst-italic">No description</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">@category.PostsCount posts</span>
+                                </td>
+                                <td>
+                                    <small>@category.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@category.Id" class="btn btn-sm btn-outline-info" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        @if (category.PostsCount == 0)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Delete" 
+                                                    onclick="confirmDelete(@category.Id, '@category.Name')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" title="Cannot delete - has posts" disabled>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Categories pagination">
+                    <ul class="pagination justify-content-center">
+                        @if (Model.CurrentPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-route-page="@(Model.CurrentPage - 1)" asp-route-search="@ViewBag.CurrentSearch">Previous</a>
+                            </li>
+                        }
+
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                <a class="page-link" asp-route-page="@i" asp-route-search="@ViewBag.CurrentSearch">@i</a>
+                            </li>
+                        }
+
+                        @if (Model.CurrentPage < Model.TotalPages)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-route-page="@(Model.CurrentPage + 1)" asp-route-search="@ViewBag.CurrentSearch">Next</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-folder fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No categories found</h5>
+                <p class="text-muted">Start by creating your first category to organize your blog posts.</p>
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create First Category
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the category "<span id="deleteCategoryName"></span>"?</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDelete(categoryId, categoryName) {
+            document.getElementById('deleteCategoryName').textContent = categoryName;
+            document.getElementById('deleteForm').action = '@Url.Action("Delete")/' + categoryId;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+    </script>
+}

@@ -1,0 +1,195 @@
+@model TechBlog.Core.DTOs.TagDto
+
+@{
+    ViewData["Title"] = "Tag Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-tag me-2"></i>Tag Details
+    </h1>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">
+            <i class="fas fa-edit me-2"></i>Edit Tag
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Tags
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="fas fa-tag text-white fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-1">
+                            <span class="badge bg-primary fs-3">#@Model.Name</span>
+                        </h2>
+                        <code class="text-muted">@Model.Slug</code>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <div class="mb-4">
+                        <h5>Description</h5>
+                        <p class="text-muted">@Model.Description</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="mb-4">
+                        <p class="text-muted fst-italic">No description provided for this tag.</p>
+                    </div>
+                }
+
+                <!-- Recent Posts with this Tag -->
+                <div class="mt-4">
+                    <h5>Posts Tagged with #@Model.Name</h5>
+                    @if (Model.PostsCount > 0)
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            This tag is used in <strong>@Model.PostsCount</strong> blog posts.
+                            <a asp-controller="BlogPosts" asp-action="Index" asp-route-tag="@Model.Id" class="alert-link">View all posts</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No posts have been tagged with #@Model.Name yet.
+                            <a asp-controller="BlogPosts" asp-action="Create" class="alert-link">Create a post with this tag</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Tag Statistics -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-primary">@Model.PostsCount</h4>
+                            <small class="text-muted">Posts</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">0</h4>
+                        <small class="text-muted">Views</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Tag Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Created:</strong><br>
+                    <span class="text-muted">@Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                </div>
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <div class="mb-3">
+                        <strong>Last Updated:</strong><br>
+                        <span class="text-muted">@Model.UpdatedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                    </div>
+                }
+                <div class="mb-3">
+                    <strong>URL Slug:</strong><br>
+                    <code class="small">@Model.Slug</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Edit Tag
+                    </a>
+                    
+                    <a asp-controller="BlogPosts" asp-action="Create" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>Create Post with Tag
+                    </a>
+                    
+                    <a asp-controller="BlogPosts" asp-action="Index" asp-route-tag="@Model.Id" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>View All Posts
+                    </a>
+                    
+                    <a href="/Blog/Tag/@Model.Slug" target="_blank" class="btn btn-outline-success">
+                        <i class="fas fa-external-link-alt me-2"></i>View Live Tag Page
+                    </a>
+                    
+                    @if (Model.PostsCount == 0)
+                    {
+                        <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                            <i class="fas fa-trash me-2"></i>Delete Tag
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-outline-secondary" disabled title="Cannot delete tag used in posts">
+                            <i class="fas fa-trash me-2"></i>Cannot Delete
+                        </button>
+                        <small class="text-muted">Remove from all posts first to delete this tag</small>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+@if (Model.PostsCount == 0)
+{
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the tag "<strong>#@Model.Name</strong>"?</p>
+                    <p class="text-danger"><small>This action cannot be undone.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display: inline;">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function confirmDelete() {
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+    </script>
+}

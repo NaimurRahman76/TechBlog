@@ -1,0 +1,127 @@
+@model TechBlog.Core.DTOs.CreateTagDto
+
+@{
+    ViewData["Title"] = "Create Tag";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-plus me-2"></i>Create New Tag
+    </h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Tags
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Tag Information</h6>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Tag Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text">#</span>
+                            <input asp-for="Name" class="form-control" placeholder="Enter tag name" />
+                        </div>
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                        <div class="form-text">Use lowercase, single words or hyphenated phrases (e.g., "javascript", "web-development")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description <span class="text-muted">(Optional)</span></label>
+                        <textarea asp-for="Description" class="form-control" rows="3" placeholder="Brief description of this tag"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Tag
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Tag Preview -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Preview</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Tag will appear as:</label>
+                    <div>
+                        <span class="badge bg-primary fs-6" id="tagPreview">#your-tag</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">URL Slug:</label>
+                    <div>
+                        <code id="slugPreview">your-tag</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Guidelines -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <h6>Tag Name</h6>
+                <ul class="small text-muted mb-3">
+                    <li>Use lowercase letters</li>
+                    <li>No spaces (use hyphens instead)</li>
+                    <li>Keep it short and descriptive</li>
+                    <li>Use existing tags when possible</li>
+                </ul>
+
+                <h6>Examples</h6>
+                <div class="mb-3">
+                    <span class="badge bg-success me-1">#javascript</span>
+                    <span class="badge bg-success me-1">#web-development</span>
+                    <span class="badge bg-success me-1">#react</span>
+                    <span class="badge bg-success me-1">#tutorial</span>
+                </div>
+
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-lightbulb me-1"></i>
+                        Tags help readers find related content and improve SEO.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Auto-generate slug and preview from tag name
+        document.getElementById('Name').addEventListener('input', function() {
+            const name = this.value;
+            const slug = name.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim('-');
+            
+            // Update previews
+            document.getElementById('tagPreview').textContent = '#' + (slug || 'your-tag');
+            document.getElementById('slugPreview').textContent = slug || 'your-tag';
+        });
+    </script>
+}

@@ -1,0 +1,124 @@
+@model TechBlog.Core.DTOs.UpdatePostDto
+
+@{
+    ViewData["Title"] = "Edit Blog Post";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-edit me-2"></i>Edit Blog Post
+    </h1>
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-info me-2">
+            <i class="fas fa-eye me-2"></i>View Post
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Posts
+        </a>
+    </div>
+</div>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <partial name="_BlogPostForm" model="Model" />
+
+    <div class="mt-4">
+        <div class="d-flex gap-3">
+            <button type="submit" name="action" value="save" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+            @if (!Model.IsPublished)
+            {
+                <button type="submit" name="action" value="publish" class="btn btn-success">
+                    <i class="fas fa-globe me-2"></i>Publish Post
+                </button>
+            }
+            else
+            {
+                <button type="submit" name="action" value="unpublish" class="btn btn-warning">
+                    <i class="fas fa-eye-slash me-2"></i>Unpublish
+                </button>
+            }
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.tiny.cloud/1/0xjcjjxa5drlapwxszehgugjdhpgfpxdfol8tugsnxrnql3b/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+    <script>
+        // Initialize TinyMCE
+        tinymce.init({
+            selector: '.tinymce-editor',
+            height: 400,
+            menubar: false,
+            plugins: [
+                'anchor', 'autolink', 'charmap', 'codesample', 'emoticons', 'link', 'lists', 'media', 'searchreplace', 'table', 'visualblocks', 'wordcount',
+                'checklist', 'mediaembed', 'casechange', 'formatpainter', 'pageembed', 'a11ychecker', 'tinymcespellchecker', 'permanentpen', 'powerpaste', 'advtable', 'advcode', 'advtemplate', 'ai', 'uploadcare', 'mentions', 'tinycomments', 'tableofcontents', 'footnotes', 'mergetags', 'autocorrect', 'typography', 'inlinecss', 'markdown','importword', 'exportword', 'exportpdf'
+            ],
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link media table mergetags | addcomment showcomments | spellcheckdialog a11ycheck typography uploadcare | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
+            tinycomments_mode: 'embedded',
+            tinycomments_author: 'Author name',
+            mergetags_list: [
+                { value: 'First.Name', title: 'First Name' },
+                { value: 'Email', title: 'Email' },
+            ],
+            ai_request: (request, respondWith) => respondWith.string(() => Promise.reject('See docs to implement AI Assistant')),
+            uploadcare_public_key: 'f161efe378d252fc39a4',
+            content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+        });
+
+        // Tags functionality
+        let tags = @Html.Raw(Json.Serialize(Model.Tags?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? new string[0]));
+        const tagsInput = document.getElementById('tagsInput');
+        const tagsContainer = document.getElementById('tagsContainer');
+        const tagsHidden = document.getElementById('tagsHidden');
+
+        function updateTagsDisplay() {
+            tagsContainer.innerHTML = '';
+            tags.forEach((tag, index) => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'badge bg-secondary me-2 mb-2';
+                tagElement.innerHTML = `${tag} <i class="fas fa-times ms-1" onclick="removeTag(${index})" style="cursor: pointer;"></i>`;
+                tagsContainer.appendChild(tagElement);
+            });
+            tagsHidden.value = tags.join(',');
+        }
+
+        function addTag(tagText) {
+            const tag = tagText.trim();
+            if (tag && !tags.includes(tag)) {
+                tags.push(tag);
+                updateTagsDisplay();
+            }
+        }
+
+        function removeTag(index) {
+            tags.splice(index, 1);
+            updateTagsDisplay();
+        }
+
+        tagsInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addTag(this.value);
+                this.value = '';
+            }
+        });
+
+        tagsInput.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                addTag(this.value);
+                this.value = '';
+            }
+        });
+
+        // Initialize tags display
+        updateTagsDisplay();
+    </script>
+}

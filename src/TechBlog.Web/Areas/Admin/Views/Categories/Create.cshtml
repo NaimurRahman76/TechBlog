@@ -1,0 +1,102 @@
+@model TechBlog.Core.DTOs.CreateCategoryDto
+
+@{
+    ViewData["Title"] = "Create Category";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-plus me-2"></i>Create New Category
+    </h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Categories
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Category Information</h6>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Category Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="Enter category name" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="Brief description of this category"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Category
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Category Guidelines -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <h6>Category Name</h6>
+                <ul class="small text-muted mb-3">
+                    <li>Use clear, descriptive names</li>
+                    <li>Keep it concise (2-3 words max)</li>
+                    <li>Use title case (e.g., "Web Development")</li>
+                </ul>
+
+                <h6>Description</h6>
+                <ul class="small text-muted mb-3">
+                    <li>Explain what topics this category covers</li>
+                    <li>Keep it under 200 characters</li>
+                    <li>Help readers understand the content</li>
+                </ul>
+
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        The URL slug will be automatically generated from the category name.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Auto-generate slug preview
+        document.getElementById('Name').addEventListener('input', function() {
+            const name = this.value;
+            const slug = name.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim('-');
+            
+            // Update slug preview if exists
+            const slugPreview = document.getElementById('slugPreview');
+            if (slugPreview) {
+                slugPreview.textContent = slug || 'category-slug';
+            }
+        });
+    </script>
+}

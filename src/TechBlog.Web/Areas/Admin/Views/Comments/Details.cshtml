@@ -1,0 +1,215 @@
+@model TechBlog.Core.DTOs.CommentDto
+
+@{
+    ViewData["Title"] = "Comment Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-comment me-2"></i>Comment Details
+    </h1>
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Comments
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Comment Content</h6>
+                    @if (Model.IsApproved == true)
+                    {
+                        <span class="badge bg-success fs-6">Approved</span>
+                    }
+                    else if (Model.IsRejected)
+                    {
+                        <span class="badge bg-danger fs-6">Rejected</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning fs-6">Pending Review</span>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                            <i class="fas fa-user text-white"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">@Model.AuthorName</h5>
+                            <small class="text-muted">@Model.AuthorEmail</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comment-content bg-light p-4 rounded mb-4">
+                    <p class="mb-0">@Model.Content</p>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Commented on:</strong>
+                    <a asp-controller="BlogPosts" asp-action="Details" asp-route-id="@Model.BlogPostId" class="text-decoration-none">
+                        @Model.BlogPostTitle
+                    </a>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Posted:</strong> @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                </div>
+
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <div class="mb-3">
+                        <strong>Last Updated:</strong> @Model.UpdatedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Comment Actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Moderation Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    @if (Model.IsApproved != true)
+                    {
+                        <form asp-action="Approve" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check me-2"></i>Approve Comment
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Unapprove" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-warning">
+                                <i class="fas fa-undo me-2"></i>Unapprove
+                            </button>
+                        </form>
+                    }
+
+                    @if (!Model.IsRejected)
+                    {
+                        <form asp-action="Reject" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-times me-2"></i>Reject Comment
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Unreject" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-success">
+                                <i class="fas fa-undo me-2"></i>Unreject
+                            </button>
+                        </form>
+                    }
+
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                        <i class="fas fa-trash me-2"></i>Delete Comment
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comment Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Comment Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Author:</strong><br>
+                    <span class="text-muted">@Model.AuthorName</span><br>
+                    <small class="text-muted">@Model.AuthorEmail</small>
+                </div>
+                <div class="mb-3">
+                    <strong>IP Address:</strong><br>
+                    <code class="small">@(Model.IpAddress ?? "Not recorded")</code>
+                </div>
+                <div class="mb-3">
+                    <strong>User Agent:</strong><br>
+                    <small class="text-muted">@(Model.UserAgent ?? "Not recorded")</small>
+                </div>
+                <div class="mb-3">
+                    <strong>Status:</strong><br>
+                    @if (Model.IsApproved == true)
+                    {
+                        <span class="badge bg-success">Approved</span>
+                    }
+                    else if (Model.IsRejected)
+                    {
+                        <span class="badge bg-danger">Rejected</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">Pending Review</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Post -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Related Post</h6>
+            </div>
+            <div class="card-body">
+                <h6>@Model.BlogPostTitle</h6>
+                <div class="d-grid gap-2">
+                    <a asp-controller="BlogPosts" asp-action="Details" asp-route-id="@Model.BlogPostId" class="btn btn-outline-primary">
+                        <i class="fas fa-eye me-2"></i>View Post
+                    </a>
+                    <a href="/Blog/Post/@Model.BlogPostSlug" target="_blank" class="btn btn-outline-success">
+                        <i class="fas fa-external-link-alt me-2"></i>View Live Post
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this comment by "<strong>@Model.AuthorName</strong>"?</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDelete() {
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+    </script>
+}

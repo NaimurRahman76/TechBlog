@@ -1,0 +1,159 @@
+@model TechBlog.Web.Models.BlogTagViewModel
+
+@{
+    ViewData["Title"] = Model.Tag.Name + " - TechBlog";
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Blog" asp-action="Index">Blog</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">#@Model.Tag.Name</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-5 fw-bold text-primary">
+                        <i class="fas fa-tag me-2"></i>#@Model.Tag.Name
+                    </h1>
+                    <p class="text-muted">
+                        <i class="fas fa-file-alt me-1"></i>@Model.Posts.Count() posts tagged with @Model.Tag.Name
+                    </p>
+                </div>
+                <a asp-controller="Blog" asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>All Posts
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Posts -->
+    <div class="row">
+        <div class="col-lg-8">
+            @if (Model.Posts.Any())
+            {
+                @foreach (var post in Model.Posts)
+                {
+                    <div class="card mb-4 shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                    <i class="fas fa-image fa-3x text-muted"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <span class="badge bg-primary">@post.CategoryName</span>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>@post.CreatedAt.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </div>
+                                    <h5 class="card-title">
+                                        <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none">@post.Title</a>
+                                    </h5>
+                                    <p class="card-text">@post.Summary</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle me-2 text-muted"></i>
+                                            <small class="text-muted">By @post.AuthorName</small>
+                                        </div>
+                                        <div class="d-flex gap-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-eye me-1"></i>@post.ViewCount views
+                                            </small>
+                                        </div>
+                                    </div>
+                                    @if (post.Tags.Any())
+                                    {
+                                        <div class="mt-2">
+                                            @foreach (var tag in post.Tags)
+                                            {
+                                                <span class="badge bg-secondary me-1 @(tag == Model.Tag.Name ? "bg-warning text-dark" : "")">#@tag</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-tag fa-4x text-muted mb-3"></i>
+                    <h3 class="text-muted">No posts with this tag yet</h3>
+                    <p class="text-muted">Check back soon for content tagged with #@Model.Tag.Name!</p>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a asp-area="Admin" asp-controller="BlogPosts" asp-action="Create" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Create First Post
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Tag Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Tag Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Tag:</strong> #@Model.Tag.Name
+                    </div>
+                    <div class="mb-2">
+                        <strong>Posts:</strong> @Model.Posts.Count()
+                    </div>
+                    <div class="mb-2">
+                        <strong>Created:</strong> @Model.Tag.CreatedAt.ToString("MMM dd, yyyy")
+                    </div>
+                </div>
+            </div>
+
+            <!-- Popular Tags -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tags me-2"></i>Popular Tags
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted text-center py-3">
+                        <i class="fas fa-tag fa-2x mb-2"></i>
+                        <p class="mb-0">Explore all tags</p>
+                        <a asp-controller="Blog" asp-action="Index" class="btn btn-sm btn-outline-primary mt-2">View All Posts</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Newsletter Widget -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-envelope me-2"></i>Newsletter
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Stay updated with our latest posts and tech insights.</p>
+                    <div class="mb-3">
+                        <input type="email" class="form-control" placeholder="Your email address">
+                    </div>
+                    <button class="btn btn-primary w-100">
+                        <i class="fas fa-paper-plane me-2"></i>Subscribe
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
