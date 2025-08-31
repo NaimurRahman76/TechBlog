@@ -55,6 +55,11 @@
                             <span class="badge bg-danger rounded-pill ms-2" id="pending-comments-count">0</span>
                         </a>
                     </li>
+                    <li>
+                        <a asp-area="Admin" asp-controller="Users" asp-action="Index" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Users" ? "active" : "")">
+                            <i class="fas fa-users me-2"></i> Users
+                        </a>
+                    </li>
                     <li class="mt-4">
                         <a href="/" class="nav-link text-white">
                             <i class="fas fa-arrow-left me-2"></i> Back to Site

@@ -4,6 +4,7 @@ using TechBlog.Web.Models;
 using TechBlog.Core.Interfaces;
 using AutoMapper;
 using TechBlog.Core.DTOs;
+using TechBlog.Core.Entities;
 
 namespace TechBlog.Web.Controllers;
 
@@ -24,16 +25,35 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var recentPosts = await _blogService.GetRecentPostsAsync(6);
-        var categories = await _categoryService.GetAllCategoriesAsync();
-        
-        var model = new HomeViewModel
+        try
         {
-            RecentPosts = _mapper.Map<IEnumerable<PostListDto>>(recentPosts),
-            Categories = _mapper.Map<IEnumerable<CategoryDto>>(categories)
-        };
-        
-        return View(model);
+            _logger.LogInformation("Fetching recent posts...");
+            var recentPosts = await _blogService.GetRecentPostsAsync(6);
+            _logger.LogInformation($"Fetched {recentPosts?.Count() ?? 0} recent posts");
+            
+            _logger.LogInformation("Fetching all categories...");
+            var categories = await _categoryService.GetAllCategoriesAsync();
+            _logger.LogInformation($"Fetched {categories?.Count() ?? 0} categories");
+            
+            _logger.LogInformation("Mapping to view models...");
+            var model = new HomeViewModel
+            {
+                RecentPosts = _mapper.Map<IEnumerable<PostListDto>>(recentPosts ?? Enumerable.Empty<Core.Entities.BlogPost>()),
+                Categories = _mapper.Map<IEnumerable<CategoryDto>>(categories ?? Enumerable.Empty<Core.Entities.Category>())
+            };
+            
+            _logger.LogInformation("Rendering Index view");
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in Home/Index: {Message}", ex.Message);
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
+            }
+            throw; // Re-throw to let the error handling middleware handle it
+        }
     }
 
     public IActionResult About()
