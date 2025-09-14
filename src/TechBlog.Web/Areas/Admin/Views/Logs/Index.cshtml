@@ -1,0 +1,180 @@
+@model IEnumerable<TechBlog.Core.Entities.LogEntry>
+@{
+    ViewData["Title"] = "Logs";
+    var level = ViewBag.Level as string;
+    var search = ViewBag.Search as string;
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 50);
+    var total = (int)(ViewBag.Total ?? 0);
+    var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-clipboard-list me-2"></i>Logs
+        </h1>
+        <form asp-action="Clear" method="post" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            <select name="level" class="form-select">
+                <option value="">All Levels</option>
+                <option value="Info" selected="@(level == "Info")">Info</option>
+                <option value="Warning" selected="@(level == "Warning")">Warning</option>
+                <option value="Error" selected="@(level == "Error")">Error</option>
+            </select>
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash me-2"></i>Clear
+            </button>
+        </form>
+    </div>
+
+@section Scripts {
+    <script>
+        function toLocalISOString(date) {
+            const pad = (n) => n.toString().padStart(2, '0');
+            return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+        }
+        function setRange(preset) {
+            const now = new Date();
+            let from;
+            if (preset === 'today') {
+                from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+            } else if (preset === '24h') {
+                from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            } else if (preset === '7d') {
+                from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            } else if (preset === '30d') {
+                from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            }
+            document.querySelector('input[name="fromUtc"]').value = toLocalISOString(from);
+            document.querySelector('input[name="toUtc"]').value = toLocalISOString(now);
+        }
+    </script>
+}
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="card shadow mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <select name="level" class="form-select">
+                        <option value="">All Levels</option>
+                        <option value="Info" selected="@(level == "Info")">Info</option>
+                        <option value="Warning" selected="@(level == "Warning")">Warning</option>
+                        <option value="Error" selected="@(level == "Error")">Error</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="datetime-local" name="fromUtc" value="@ViewBag.FromUtc" class="form-control" placeholder="From (UTC)">
+                </div>
+                <div class="col-md-3">
+                    <input type="datetime-local" name="toUtc" value="@ViewBag.ToUtc" class="form-control" placeholder="To (UTC)">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="userId" value="@ViewBag.UserId" class="form-control" placeholder="User ID">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="search" value="@search" class="form-control" placeholder="Search messages, source, exceptions...">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-grow-1" type="submit">
+                        <i class="fas fa-search me-2"></i>Filter
+                    </button>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="setRange('today')">Today</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="setRange('24h')">24h</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="setRange('7d')">7d</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="setRange('30d')">30d</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header">
+            <strong>Results</strong> (@total)
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Time (UTC)</th>
+                            <th>Level</th>
+                            <th>Source</th>
+                            <th>Message</th>
+                            <th>Exception</th>
+                            <th>User</th>
+                            <th>IP</th>
+                            <th>User Agent</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model)
+                        {
+                            <tr>
+                                <td>@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>
+                                    @if (log.Level == "Error") { <span class="badge bg-danger">Error</span> }
+                                    else if (log.Level == "Warning") { <span class="badge bg-warning text-dark">Warning</span> }
+                                    else { <span class="badge bg-secondary">Info</span> }
+                                </td>
+                                <td>@log.Source</td>
+                                <td class="text-wrap" style="max-width: 340px">@log.Message</td>
+                                <td class="text-wrap" style="max-width: 340px">@log.Exception</td>
+                                <td>@log.UserId</td>
+                                <td>@log.IpAddress</td>
+                                <td class="text-truncate" style="max-width: 220px">@log.UserAgent</td>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@log.Id" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr><td colspan="9" class="text-center text-muted py-4">No logs found</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination mb-0 justify-content-center">
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-route-level="@level" asp-route-search="@search" asp-route-page="@(page - 1)">Previous</a>
+                        </li>
+                        @for (var i = 1; i <= totalPages; i++)
+                        {
+                            <li class="page-item @(i == page ? "active" : "")">
+                                <a class="page-link" asp-route-level="@level" asp-route-search="@search" asp-route-page="@i">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-route-level="@level" asp-route-search="@search" asp-route-page="@(page + 1)">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}

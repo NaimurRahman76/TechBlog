@@ -16,8 +16,8 @@
             <li><a class="dropdown-item" href="#" onclick="bulkAction('approve')">
                 <i class="fas fa-check me-2"></i>Approve Selected
             </a></li>
-            <li><a class="dropdown-item" href="#" onclick="bulkAction('reject')">
-                <i class="fas fa-times me-2"></i>Reject Selected
+            <li><a class="dropdown-item" href="#" onclick="bulkAction('unapprove')">
+                <i class="fas fa-times me-2"></i>Unapprove Selected
             </a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item text-danger" href="#" onclick="bulkAction('delete')">
@@ -42,11 +42,6 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab">
             Approved (@Model.ApprovedCount)
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="rejected-tab" data-bs-toggle="tab" data-bs-target="#rejected" type="button" role="tab">
-            Rejected (@Model.RejectedCount)
         </button>
     </li>
 </ul>
@@ -117,10 +112,6 @@
                                     {
                                         <span class="badge bg-success">Approved</span>
                                     }
-                                    else if (comment.IsRejected)
-                                    {
-                                        <span class="badge bg-danger">Rejected</span>
-                                    }
                                     else
                                     {
                                         <span class="badge bg-warning">Pending</span>
@@ -153,13 +144,12 @@
                                             </button>
                                         </form>
                                     }
-                                    
-                                    @if (!comment.IsRejected)
+                                    else
                                     {
-                                        <form asp-action="Reject" asp-route-id="@comment.Id" method="post" style="display: inline;">
+                                        <form asp-action="Unapprove" asp-route-id="@comment.Id" method="post" style="display: inline;">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-outline-warning">
-                                                <i class="fas fa-times me-1"></i>Reject
+                                                <i class="fas fa-times me-1"></i>Unapprove
                                             </button>
                                         </form>
                                     }

@@ -30,7 +30,8 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Oo]ut/
-
+[Ll]og/
+[Ll]ogs/
 
 # Keep all Logs folders tracked, even if other rules ignore Logs
 !areas/admin/views/Logs/
