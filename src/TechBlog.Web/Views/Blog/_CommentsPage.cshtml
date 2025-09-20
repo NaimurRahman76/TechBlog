@@ -1,0 +1,12 @@
+@model IEnumerable<TechBlog.Core.DTOs.CommentDto>
+@{
+    // ViewBags expected: HasMore (bool), NextPage (int), ReplyPreviewSize (int)
+}
+<div id="commentsPageChunk">
+    @await Html.PartialAsync("_CommentThread", Model)
+</div>
+<div id="commentsPageMeta"
+     data-has-more="@((ViewBag.HasMore ?? false).ToString().ToLower())"
+     data-next-page="@((int)(ViewBag.NextPage ?? 2))"
+     data-reply-preview-size="@((int)(ViewBag.ReplyPreviewSize ?? 5))"
+     style="display:none"></div>

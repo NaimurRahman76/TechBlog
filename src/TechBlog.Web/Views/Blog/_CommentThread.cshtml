@@ -7,7 +7,8 @@
         foreach (var comment in comments.OrderByDescending(c => c.CreatedAt))
         {
             var indentClass = level > 0 ? $"ms-{Math.Min(level * 3, 5)}" : string.Empty;
-<div class="comment-item border-bottom pb-3 mb-3 @indentClass" data-comment-id="@comment.Id" data-author-name="@comment.AuthorName" data-depth="@level">
+            var topLevelClass = level == 0 ? "top-level-comment" : string.Empty;
+<div class="comment-item border-bottom pb-3 mb-3 @indentClass @topLevelClass" data-comment-id="@comment.Id" data-author-name="@comment.AuthorName" data-depth="@level">
     <div class="d-flex justify-content-between align-items-start">
         <div class="d-flex">
             <div class="me-3">
@@ -29,13 +30,23 @@
 </div>
             if (comment.Replies != null && comment.Replies.Any())
             {
-                if (level < maxDepth)
+                <div class="comment-replies" data-parent-id="@comment.Id">
+                @if (level < maxDepth)
                 {
                     RenderComments(comment.Replies, level + 1);
                 }
                 else
                 {
                     <div class="text-muted small @indentClass ms-3">More replies hidden…</div>
+                }
+                </div>
+                var shown = comment.Replies?.Count() ?? 0;
+                var remaining = (comment.ReplyCount > shown) ? (comment.ReplyCount - shown) : 0;
+                if (remaining > 0)
+                {
+                    <div class="@indentClass">
+                        <button type="button" class="btn btn-sm btn-link p-0 load-more-replies" data-parent-id="@comment.Id">See all @comment.ReplyCount replies</button>
+                    </div>
                 }
             }
         }

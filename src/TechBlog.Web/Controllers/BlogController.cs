@@ -45,12 +45,20 @@ namespace TechBlog.Web.Controllers
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public async Task<IActionResult> CommentsPartial(int postId)
+        public async Task<IActionResult> CommentsPartial(int postId, int page = 1, int pageSize = 5, int replyPreviewSize = 5)
         {
             try
             {
-                var comments = await LoadCommentsForPost(postId);
-                return PartialView("_CommentThread", comments);
+                var allComments = await LoadCommentsForPost(postId, replyPreviewSize);
+                var totalTopLevel = allComments.Count();
+                var paged = allComments
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+                ViewBag.HasMore = (page * pageSize) < totalTopLevel;
+                ViewBag.NextPage = page + 1;
+                ViewBag.ReplyPreviewSize = replyPreviewSize;
+                return PartialView("_CommentsPage", paged);
             }
             catch (Exception ex)
             {
@@ -59,7 +67,73 @@ namespace TechBlog.Web.Controllers
             }
         }
 
-        private async Task<IEnumerable<CommentDto>> LoadCommentsForPost(int postId)
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> RepliesPartial(int postId, int parentCommentId, int baseLevel = 1, int page = 1, int pageSize = 5)
+        {
+            try
+            {
+                // Load all comments (approved for public, all for admin/author)
+                IEnumerable<Comment> comments;
+                if (_workContext.IsAdmin || _workContext.IsAuthor)
+                {
+                    comments = await _commentService.GetCommentsByPostIdAsync(postId, true);
+                }
+                else
+                {
+                    comments = await _commentService.GetCommentsByPostIdAsync(postId, false);
+                }
+
+                // Build children list for the requested parent, ordered desc
+                var allReplies = comments
+                    .Where(c => c.ParentCommentId == parentCommentId)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .ToList();
+
+                var total = allReplies.Count;
+                var pageReplies = allReplies.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+                // Map to DTOs (flat list starting at base level)
+                var replyDtos = pageReplies.Select(r => new CommentDto
+                {
+                    Id = r.Id,
+                    Content = r.Content,
+                    AuthorName = r.AuthorName,
+                    AuthorEmail = r.AuthorEmail,
+                    IsApproved = r.IsApproved,
+                    ParentCommentId = r.ParentCommentId,
+                    BlogPostId = r.BlogPostId,
+                    CreatedAt = r.CreatedAt,
+                    UpdatedAt = r.UpdatedAt,
+                    Replies = (r.Replies ?? new List<Comment>())
+                        .OrderByDescending(x => x.CreatedAt)
+                        .Select(x => new CommentDto
+                        {
+                            Id = x.Id,
+                            Content = x.Content,
+                            AuthorName = x.AuthorName,
+                            AuthorEmail = x.AuthorEmail,
+                            IsApproved = x.IsApproved,
+                            ParentCommentId = x.ParentCommentId,
+                            BlogPostId = x.BlogPostId,
+                            CreatedAt = x.CreatedAt,
+                            UpdatedAt = x.UpdatedAt
+                        }).ToList()
+                }).ToList();
+
+                ViewBag.BaseLevel = baseLevel;
+                ViewBag.HasMore = (page * pageSize) < total;
+                ViewBag.NextPage = page + 1;
+                return PartialView("_RepliesPage", replyDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load replies for post {PostId} parent {ParentId}", postId, parentCommentId);
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        private async Task<IEnumerable<CommentDto>> LoadCommentsForPost(int postId, int? replyPreviewSize = null)
         {
             IEnumerable<Comment> commentsToShow;
             if (_workContext.IsAdmin || _workContext.IsAuthor)
@@ -68,18 +142,9 @@ namespace TechBlog.Web.Controllers
             }
             else
             {
+                // Public site: show only approved comments
                 var approved = await _commentService.GetCommentsByPostIdAsync(postId, false);
-                if (_workContext.IsAuthenticated)
-                {
-                    var all = await _commentService.GetCommentsByPostIdAsync(postId, true);
-                    var currentUser = await _workContext.GetCurrentUserAsync();
-                    var minePending = all.Where(c => !c.IsApproved && c.AuthorId == currentUser?.Id);
-                    commentsToShow = approved.Concat(minePending).OrderByDescending(c => c.CreatedAt);
-                }
-                else
-                {
-                    commentsToShow = approved;
-                }
+                commentsToShow = approved;
             }
 
             // Build a threaded tree so replies render under their parents
@@ -99,11 +164,12 @@ namespace TechBlog.Web.Controllers
                 }
             }
 
-            // Map recursively to DTOs
+            // Map recursively to DTOs. Limit replies by replyPreviewSize when provided.
             IEnumerable<CommentDto> MapTree(IEnumerable<Comment> nodes)
             {
                 foreach (var n in nodes.OrderByDescending(x => x.CreatedAt))
                 {
+                    var totalReplies = n.Replies?.Count ?? 0;
                     var dto = new CommentDto
                     {
                         Id = n.Id,
@@ -114,11 +180,14 @@ namespace TechBlog.Web.Controllers
                         ParentCommentId = n.ParentCommentId,
                         BlogPostId = n.BlogPostId,
                         CreatedAt = n.CreatedAt,
-                        UpdatedAt = n.UpdatedAt
+                        UpdatedAt = n.UpdatedAt,
+                        ReplyCount = totalReplies
                     };
                     if (n.Replies != null && n.Replies.Any())
                     {
-                        dto.Replies = MapTree(n.Replies).ToList();
+                        var ordered = n.Replies.OrderByDescending(r => r.CreatedAt);
+                        var limited = replyPreviewSize.HasValue ? ordered.Take(replyPreviewSize.Value) : ordered;
+                        dto.Replies = MapTree(limited).ToList();
                     }
                     yield return dto;
                 }

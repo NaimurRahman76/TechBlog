@@ -197,8 +197,11 @@
                     </div>
 
                     <!-- Comments List -->
-                    <div id="commentsList">
-                        @await Html.PartialAsync("_CommentThread", Model.Post.Comments ?? Enumerable.Empty<TechBlog.Core.DTOs.CommentDto>())
+                    <div id="commentsList"></div>
+                    <div class="mt-2">
+                        <button id="loadMoreComments" class="btn btn-outline-secondary btn-sm d-none">
+                            <i class="fas fa-chevron-down me-1"></i>Load more comments
+                        </button>
                     </div>
                 </div>
             </div>
@@ -253,22 +256,10 @@
                     $('#commentsList').prepend(commentHtml);
                 }
                 
-                // Reload comments from server to ensure thread consistency
-                $.ajax({
-                        url: '@Url.Action("CommentsPartial", "Blog")',
-                        data: { postId: @Model.Post.Id, _ts: Date.now() },
-                        cache: false
-                    })
-                    .done(function(html){
-                        $('#commentsList').html(html);
-                        const refreshedCount = $('#commentsList .comment-item').length;
-                        $('.comment-count').text(`Comments (${refreshedCount})`);
-                    })
-                    .fail(function(){
-                        // Fallback: update count based on current DOM
-                        const commentCount = $('#commentsList .comment-item').length;
-                        $('.comment-count').text(`Comments (${commentCount})`);
-                    });
+                // Reload comments first page to ensure thread consistency
+                $('#commentsList').empty();
+                currentCommentsPage = 1;
+                loadComments(currentCommentsPage);
                 
                 // Hide success message after 5 seconds
                 setTimeout(() => {
@@ -306,6 +297,69 @@
             $submitBtn.find('i').removeClass('d-none');
         }
         
+        let currentCommentsPage = 1;
+        const pageSize = 5;
+        const replyPreviewSize = 5;
+
+        function updateCommentCount() {
+            const topLevelCount = $('#commentsList .top-level-comment').length;
+            $('.comment-count').text(`Comments (${topLevelCount})`);
+        }
+
+        function wireReplyButtons() {
+            // Reply to a comment
+            $(document).off('click', '.comment-reply-btn').on('click', '.comment-reply-btn', function() {
+                const $item = $(this).closest('.comment-item');
+                const id = $item.data('comment-id');
+                const name = $item.data('author-name');
+                $('#parentCommentId').val(id);
+                $('#replyingToName').text(name);
+                $('#replyingTo').removeClass('d-none');
+                $('#commentContent').focus();
+            });
+            // Load more replies
+            $(document).off('click', '.load-more-replies').on('click', '.load-more-replies', function(){
+                const parentId = $(this).data('parent-id');
+                const $btn = $(this);
+                $.ajax({
+                    url: '@Url.Action("RepliesPartial", "Blog")',
+                    data: { postId: @Model.Post.Id, parentCommentId: parentId, baseLevel: 1, _ts: Date.now() },
+                    cache: false
+                }).done(function(html){
+                    const $container = $(`.comment-replies[data-parent-id='${parentId}']`);
+                    $container.html(html);
+                    $btn.remove();
+                });
+            });
+        }
+
+        function loadComments(page) {
+            $('#loadMoreComments').prop('disabled', true);
+            $.ajax({
+                url: '@Url.Action("CommentsPartial", "Blog")',
+                data: { postId: @Model.Post.Id, page: page, pageSize: pageSize, replyPreviewSize: replyPreviewSize, _ts: Date.now() },
+                cache: false
+            }).done(function(html){
+                const $temp = $('<div>').html(html);
+                const hasMore = $temp.find('#commentsPageMeta').data('has-more') === true || $temp.find('#commentsPageMeta').data('has-more') === 'true';
+                const nextPage = parseInt($temp.find('#commentsPageMeta').data('next-page')) || (page + 1);
+                const chunk = $temp.find('#commentsPageChunk').html();
+                $('#commentsList').append(chunk);
+                updateCommentCount();
+                wireReplyButtons();
+                if (hasMore) {
+                    $('#loadMoreComments').removeClass('d-none').off('click').on('click', function(){
+                        currentCommentsPage = nextPage;
+                        loadComments(currentCommentsPage);
+                    }).prop('disabled', false);
+                } else {
+                    $('#loadMoreComments').addClass('d-none');
+                }
+            }).fail(function(){
+                $('#loadMoreComments').addClass('d-none');
+            });
+        }
+
         $(document).ready(function() {
             // Handle form submission
             $('#commentForm').on('submit', function(e) {
@@ -328,22 +382,18 @@
                 return true;
             });
 
-            // Reply to a comment
-            $(document).on('click', '.comment-reply-btn', function() {
-                const $item = $(this).closest('.comment-item');
-                const id = $item.data('comment-id');
-                const name = $item.data('author-name');
-                $('#parentCommentId').val(id);
-                $('#replyingToName').text(name);
-                $('#replyingTo').removeClass('d-none');
-                $('#commentContent').focus();
-            });
+            wireReplyButtons();
 
             // Cancel reply
             $('#cancelReply').on('click', function() {
                 $('#parentCommentId').val('');
                 $('#replyingTo').addClass('d-none');
             });
+
+            // Initial comments load
+            $('#commentsList').empty();
+            currentCommentsPage = 1;
+            loadComments(currentCommentsPage);
         });
     </script>
     <script>
