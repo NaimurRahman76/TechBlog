@@ -38,10 +38,12 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             _webHostEnvironment = webHostEnvironment;
         }
 
-        public async Task<IActionResult> Index(int? page = 1, string? search = null, string? status = null)
+        public async Task<IActionResult> Index(int? page = 1, string? search = null, string? status = null, int pageSize = 10)
         {
             ViewData["CurrentFilter"] = search;
             ViewData["StatusFilter"] = status;
+            ViewBag.CurrentSearch = search;
+            ViewBag.CurrentStatus = status;
 
             var posts = await _blogService.GetAllPostsAsync(includeUnpublished: true);
             
@@ -59,14 +61,18 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                     : posts.Where(p => !p.IsPublished);
             }
 
+            var paged = _mapper.Map<IEnumerable<PostAdminListDto>>(posts)
+                .OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
+                .ToPagedList(page ?? 1, pageSize);
+
             var model = new BlogPostListViewModel
             {
-                BlogPosts = _mapper.Map<IEnumerable<PostAdminListDto>>(posts)
-                    .OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
-                    .ToPagedList(page ?? 1, 10),
-                TotalCount = posts.Count()
+                BlogPosts = paged,
+                TotalCount = posts.Count(),
+                CurrentPage = paged.PageIndex,
+                TotalPages = paged.TotalPages
             };
-
+            ViewBag.PageSize = pageSize;
             return View(model);
         }
 

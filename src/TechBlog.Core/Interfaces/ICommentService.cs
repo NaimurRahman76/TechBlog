@@ -11,6 +11,7 @@ namespace TechBlog.Core.Interfaces
         Task<Comment> GetCommentByIdAsync(int id);
         Task<IEnumerable<Comment>> GetCommentsByPostIdAsync(int postId);
         Task<IEnumerable<Comment>> GetCommentsByPostIdAsync(int postId, bool includeUnapproved);
+        Task<IEnumerable<Comment>> GetRepliesByParentIdAsync(int postId, int parentCommentId, bool includeUnapproved);
         Task<IEnumerable<Comment>> GetCommentsByAuthorAsync(string authorId);
         Task<Comment> CreateCommentAsync(Comment comment);
         Task UpdateCommentAsync(Comment comment);

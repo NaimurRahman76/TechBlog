@@ -24,12 +24,20 @@ namespace TechBlog.Web.Areas.Admin.Controllers
         }
 
         // GET: Admin/Users
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             try
             {
                 var users = await _userService.GetAllUsersAsync();
-                return View(users);
+                var list = users.ToList();
+                var total = list.Count;
+                var paged = list.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+                ViewBag.CurrentPage = page;
+                ViewBag.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
+                ViewBag.PageSize = pageSize;
+                ViewBag.TotalCount = total;
+                return View(paged);
             }
             catch (Exception ex)
             {

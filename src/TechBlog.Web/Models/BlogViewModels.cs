@@ -20,11 +20,15 @@ namespace TechBlog.Web.Models
     {
         public CategoryDto Category { get; set; } = new CategoryDto();
         public IEnumerable<PostListDto> Posts { get; set; } = new List<PostListDto>();
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
     }
 
     public class BlogTagViewModel
     {
         public TagDto Tag { get; set; } = new TagDto();
         public IEnumerable<PostListDto> Posts { get; set; } = new List<PostListDto>();
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
     }
 }

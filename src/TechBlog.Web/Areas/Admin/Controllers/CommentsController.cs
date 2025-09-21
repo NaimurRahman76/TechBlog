@@ -32,7 +32,7 @@ namespace TechBlog.Web.Areas.Admin.Controllers
         }
 
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public async Task<IActionResult> Index(int? page = 1, string? status = null, string? search = null, string? sortBy = null)
+        public async Task<IActionResult> Index(int? page = 1, string? status = null, string? search = null, string? sortBy = null, int pageSize = 10)
         {
             // These ViewBag keys are used by the view
             ViewBag.CurrentStatus = status;
@@ -68,7 +68,7 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                 _ => mapped.OrderByDescending(c => c.CreatedAt)
             };
 
-            var paged = mapped.ToPagedList(page ?? 1, 20);
+            var paged = mapped.ToPagedList(page ?? 1, pageSize);
 
             var model = new CommentListViewModel
             {
@@ -79,7 +79,7 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                 CurrentPage = paged.PageIndex,
                 TotalPages = paged.TotalPages
             };
-
+            ViewBag.PageSize = pageSize;
             return View(model);
         }
 

@@ -73,22 +73,9 @@ namespace TechBlog.Web.Controllers
         {
             try
             {
-                // Load all comments (approved for public, all for admin/author)
-                IEnumerable<Comment> comments;
-                if (_workContext.IsAdmin || _workContext.IsAuthor)
-                {
-                    comments = await _commentService.GetCommentsByPostIdAsync(postId, true);
-                }
-                else
-                {
-                    comments = await _commentService.GetCommentsByPostIdAsync(postId, false);
-                }
-
-                // Build children list for the requested parent, ordered desc
-                var allReplies = comments
-                    .Where(c => c.ParentCommentId == parentCommentId)
-                    .OrderByDescending(c => c.CreatedAt)
-                    .ToList();
+                // Get replies directly via service for accurate counts
+                var includeUnapproved = _workContext.IsAdmin || _workContext.IsAuthor;
+                var allReplies = (await _commentService.GetRepliesByParentIdAsync(postId, parentCommentId, includeUnapproved)).ToList();
 
                 var total = allReplies.Count;
                 var pageReplies = allReplies.Skip((page - 1) * pageSize).Take(pageSize).ToList();
@@ -196,9 +183,8 @@ namespace TechBlog.Web.Controllers
             return MapTree(roots).ToList();
         }
 
-        public async Task<IActionResult> Index(int page = 1, string search = null)
+        public async Task<IActionResult> Index(int page = 1, string search = null, int pageSize = 10)
         {
-            const int pageSize = 10;
             
             var posts = string.IsNullOrEmpty(search) 
                 ? await _blogService.GetAllPostsAsync()
@@ -213,6 +199,7 @@ namespace TechBlog.Web.Controllers
                 TotalPages = (int)Math.Ceiling(postDtos.Count() / (double)pageSize),
                 SearchTerm = search
             };
+            ViewBag.PageSize = pageSize;
             
             return View(model);
         }
@@ -256,7 +243,7 @@ namespace TechBlog.Web.Controllers
             return View(model);
         }
 
-        public async Task<IActionResult> Category(string slug)
+        public async Task<IActionResult> Category(string slug, int page = 1, int pageSize = 10)
         {
             if (string.IsNullOrEmpty(slug))
             {
@@ -271,16 +258,20 @@ namespace TechBlog.Web.Controllers
 
             var posts = await _blogService.GetPostsByCategoryAsync(category.Id);
             
+            var mapped = _mapper.Map<IEnumerable<PostListDto>>(posts).ToList();
             var model = new BlogCategoryViewModel
             {
                 Category = _mapper.Map<CategoryDto>(category),
-                Posts = _mapper.Map<IEnumerable<PostListDto>>(posts)
+                Posts = mapped.Skip((page - 1) * pageSize).Take(pageSize),
+                CurrentPage = page,
+                TotalPages = (int)Math.Ceiling(mapped.Count / (double)pageSize)
             };
+            ViewBag.PageSize = pageSize;
 
             return View(model);
         }
 
-        public async Task<IActionResult> Tag(string slug)
+        public async Task<IActionResult> Tag(string slug, int page = 1, int pageSize = 10)
         {
             if (string.IsNullOrEmpty(slug))
             {
@@ -295,11 +286,15 @@ namespace TechBlog.Web.Controllers
 
             var posts = await _blogService.GetPostsByTagAsync(tag.Id);
             
+            var mapped = _mapper.Map<IEnumerable<PostListDto>>(posts).ToList();
             var model = new BlogTagViewModel
             {
                 Tag = _mapper.Map<TagDto>(tag),
-                Posts = _mapper.Map<IEnumerable<PostListDto>>(posts)
+                Posts = mapped.Skip((page - 1) * pageSize).Take(pageSize),
+                CurrentPage = page,
+                TotalPages = (int)Math.Ceiling(mapped.Count / (double)pageSize)
             };
+            ViewBag.PageSize = pageSize;
 
             return View(model);
         }

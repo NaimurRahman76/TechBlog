@@ -34,6 +34,19 @@
     <!-- Posts -->
     <div class="row">
         <div class="col-lg-8">
+            <div class="d-flex justify-content-end mb-3">
+                <form method="get" class="d-flex align-items-center gap-2">
+                    <input type="hidden" name="slug" value="@Model.Tag.Slug" />
+                    <label class="small text-muted">Page size</label>
+                    <select name="pageSize" class="form-select form-select-sm" style="width: auto;">
+                        @{ var ps = (int)(ViewBag.PageSize ?? 10); }
+                        <option value="10" selected="@(ps == 10)">10</option>
+                        <option value="20" selected="@(ps == 20)">20</option>
+                        <option value="50" selected="@(ps == 50)">50</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+                </form>
+            </div>
             @if (Model.Posts.Any())
             {
                 @foreach (var post in Model.Posts)
@@ -81,6 +94,32 @@
                             </div>
                         </div>
                     </div>
+                }
+                <!-- Pagination -->
+                @if (Model.TotalPages > 1)
+                {
+                    <nav aria-label="Tag pagination">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.CurrentPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-route-page="@(Model.CurrentPage - 1)" asp-route-pageSize="@ViewBag.PageSize" asp-route-slug="@Model.Tag.Slug">Previous</a>
+                                </li>
+                            }
+                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link" asp-route-page="@i" asp-route-pageSize="@ViewBag.PageSize" asp-route-slug="@Model.Tag.Slug">@i</a>
+                                </li>
+                            }
+                            @if (Model.CurrentPage < Model.TotalPages)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-route-page="@(Model.CurrentPage + 1)" asp-route-pageSize="@ViewBag.PageSize" asp-route-slug="@Model.Tag.Slug">Next</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
                 }
             }
             else

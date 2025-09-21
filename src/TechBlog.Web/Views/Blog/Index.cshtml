@@ -42,13 +42,25 @@
     <!-- Search Bar -->
     <div class="row mb-4">
         <div class="col-lg-8 mx-auto">
-            <form method="get">
-                <div class="input-group">
-                    <span class="input-group-text">
-                        <i class="fas fa-search"></i>
-                    </span>
-                    <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Search blog posts...">
-                    <button class="btn btn-primary" type="submit">Search</button>
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Search blog posts...">
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <select name="pageSize" class="form-select">
+                        @{ var ps = (int)(ViewBag.PageSize ?? 10); }
+                        <option value="10" selected="@(ps == 10)">10</option>
+                        <option value="20" selected="@(ps == 20)">20</option>
+                        <option value="50" selected="@(ps == 50)">50</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-primary" type="submit">Apply</button>
                 </div>
             </form>
         </div>
@@ -121,19 +133,19 @@
                             @if (Model.CurrentPage > 1)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-route-page="@(Model.CurrentPage - 1)" asp-route-search="@Model.SearchTerm">Previous</a>
+                                    <a class="page-link" asp-route-page="@(Model.CurrentPage - 1)" asp-route-search="@Model.SearchTerm" asp-route-pageSize="@ViewBag.PageSize">Previous</a>
                                 </li>
                             }
                             @for (int i = 1; i <= Model.TotalPages; i++)
                             {
                                 <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
-                                    <a class="page-link" asp-route-page="@i" asp-route-search="@Model.SearchTerm">@i</a>
+                                    <a class="page-link" asp-route-page="@i" asp-route-search="@Model.SearchTerm" asp-route-pageSize="@ViewBag.PageSize">@i</a>
                                 </li>
                             }
                             @if (Model.CurrentPage < Model.TotalPages)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-route-page="@(Model.CurrentPage + 1)" asp-route-search="@Model.SearchTerm">Next</a>
+                                    <a class="page-link" asp-route-page="@(Model.CurrentPage + 1)" asp-route-search="@Model.SearchTerm" asp-route-pageSize="@ViewBag.PageSize">Next</a>
                                 </li>
                             }
                         </ul>

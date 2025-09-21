@@ -115,6 +115,9 @@ namespace TechBlog.Tests.Unit.Controllers
             var commentSvc = new Mock<ICommentService>();
             commentSvc.Setup(s => s.GetCommentsByPostIdAsync(postId, false))
                       .ReturnsAsync(comments.Where(c => c.IsApproved));
+            // New controller path calls GetRepliesByParentIdAsync
+            commentSvc.Setup(s => s.GetRepliesByParentIdAsync(postId, parentId, false))
+                      .ReturnsAsync(comments.Where(c => c.ParentCommentId == parentId && c.IsApproved));
 
             var workCtx = new Mock<IWorkContext>();
             workCtx.SetupGet(w => w.IsAdmin).Returns(false);

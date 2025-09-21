@@ -10,7 +10,31 @@
     <a asp-action="Create" class="btn btn-primary">
         <i class="fas fa-user-plus me-1"></i> Add New User
     </a>
-</div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-center">
+        <div class="col-auto">
+          <label class="small text-muted">Page size</label>
+        </div>
+        <div class="col-auto">
+          <select name="pageSize" class="form-select">
+            @{ var ps = (int)(ViewBag.PageSize ?? 10); }
+            <option value="10" selected="@(ps == 10)">10</option>
+            <option value="20" selected="@(ps == 20)">20</option>
+            <option value="50" selected="@(ps == 50)">50</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-outline-primary">Apply</button>
+        </div>
+        <div class="col ms-auto text-end">
+          <small class="text-muted">Total: @ViewBag.TotalCount</small>
+        </div>
+      </form>
+    </div>
+  </div>
 
 @if (TempData["SuccessMessage"] != null)
 {
@@ -101,6 +125,32 @@
         </div>
     </div>
 </div>
+
+@if ((int)(ViewBag.TotalPages ?? 1) > 1)
+{
+    <nav aria-label="Users pagination" class="mt-3">
+        <ul class="pagination justify-content-center">
+            @if ((int)ViewBag.CurrentPage > 1)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-route-page="@((int)ViewBag.CurrentPage - 1)" asp-route-pageSize="@ViewBag.PageSize">Previous</a>
+                </li>
+            }
+            @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link" asp-route-page="@i" asp-route-pageSize="@ViewBag.PageSize">@i</a>
+                </li>
+            }
+            @if ((int)ViewBag.CurrentPage < (int)ViewBag.TotalPages)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-route-page="@((int)ViewBag.CurrentPage + 1)" asp-route-pageSize="@ViewBag.PageSize">Next</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
 
 @section Scripts {
     <script>

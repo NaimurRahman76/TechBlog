@@ -25,9 +25,10 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             _mapper = mapper;
         }
 
-        public async Task<IActionResult> Index(int? page = 1, string? search = null)
+        public async Task<IActionResult> Index(int? page = 1, string? search = null, int pageSize = 10)
         {
             ViewData["CurrentFilter"] = search;
+            ViewBag.CurrentSearch = search;
 
             var categories = await _categoryService.GetAllCategoriesAsync();
             
@@ -38,14 +39,18 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                                                 c.Description.ToLower().Contains(search));
             }
 
+            var paged = _mapper.Map<IEnumerable<CategoryDto>>(categories)
+                .OrderBy(c => c.Name)
+                .ToPagedList(page ?? 1, pageSize);
+
             var model = new CategoryListViewModel
             {
-                Categories = _mapper.Map<IEnumerable<CategoryDto>>(categories)
-                    .OrderBy(c => c.Name)
-                    .ToPagedList(page ?? 1, 10),
-                TotalCount = categories.Count()
+                Categories = paged,
+                TotalCount = categories.Count(),
+                CurrentPage = paged.PageIndex,
+                TotalPages = paged.TotalPages
             };
-
+            ViewBag.PageSize = pageSize;
             return View(model);
         }
 

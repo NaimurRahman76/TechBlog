@@ -150,6 +150,24 @@ namespace TechBlog.Infrastructure.Services
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Comment>> GetRepliesByParentIdAsync(int postId, int parentCommentId, bool includeUnapproved)
+        {
+            var query = _context.Comments
+                .AsNoTracking()
+                .Include(c => c.Author)
+                .Include(c => c.Replies)
+                .Where(c => c.BlogPostId == postId && c.ParentCommentId == parentCommentId && !c.IsDeleted);
+
+            if (!includeUnapproved)
+            {
+                query = query.Where(c => c.IsApproved);
+            }
+
+            return await query
+                .OrderByDescending(c => c.CreatedAt)
+                .ToListAsync();
+        }
         
         public async Task<Comment> CreateCommentAsync(Comment comment)
         {
