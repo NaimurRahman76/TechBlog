@@ -106,11 +106,25 @@
                 <h6 class="m-0 font-weight-bold text-primary">Settings</h6>
             </div>
             <div class="card-body">
-                <div class="form-check form-switch mb-3">
-                    <input asp-for="IsPublished" class="form-check-input" type="checkbox" role="switch" />
-                    <label asp-for="IsPublished" class="form-check-label">Publish Post</label>
-                    <div class="form-text">Published posts are visible to the public on your site.</div>
-                </div>
+                @if (Model is TechBlog.Core.DTOs.UpdatePostDto)
+                {
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="IsPublished" class="form-check-input" type="checkbox" role="switch" />
+                        <label asp-for="IsPublished" class="form-check-label">Publish Post</label>
+                        <div class="form-text">Published posts are visible to the public on your site.</div>
+                    </div>
+                }
+                else
+                {
+                    <!-- For CreatePostDto, hide the publish checkbox and set default value -->
+                    <input type="hidden" asp-for="IsPublished" value="false" />
+                    <div class="mb-3">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Post Status:</strong> New posts are saved as drafts by default. You can publish them later from the edit page.
+                        </div>
+                    </div>
+                }
             </div>
         </div>
 

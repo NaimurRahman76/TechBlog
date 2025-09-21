@@ -42,9 +42,12 @@ namespace TechBlog.Infrastructure.Services
             if (tag == null)
                 throw new ArgumentNullException(nameof(tag));
 
+            // Ensure the name is unique by auto-generating if needed
+            tag.Name = await GenerateUniqueNameAsync(tag.Name);
+
             // Ensure the slug is unique
             tag.Slug = await GenerateUniqueSlugAsync(tag.Slug ?? tag.Name);
-            
+
             _context.Tags.Add(tag);
             await SaveChangesAsync();
             return tag;
@@ -59,8 +62,8 @@ namespace TechBlog.Infrastructure.Services
             if (existingTag == null)
                 throw new KeyNotFoundException($"Tag with ID {tag.Id} not found.");
 
-            // Ensure the slug is unique
-            existingTag.Name = tag.Name;
+            // Ensure the name is unique by auto-generating if needed
+            existingTag.Name = await GenerateUniqueNameAsync(tag.Name, tag.Id);
             existingTag.Slug = await GenerateUniqueSlugAsync(tag.Slug ?? tag.Name, tag.Id);
             existingTag.UpdatedAt = DateTime.UtcNow;
 
@@ -89,11 +92,19 @@ namespace TechBlog.Infrastructure.Services
             return await _context.Tags.AnyAsync(t => t.Id == id);
         }
 
+        public async Task<bool> TagNameExistsAsync(string name, int? excludeId = null)
+        {
+            return await _context.Tags
+                .AnyAsync(t => t.Name == name &&
+                             !t.IsDeleted &&
+                             (!excludeId.HasValue || t.Id != excludeId.Value));
+        }
+
         public async Task<bool> TagSlugExistsAsync(string slug, int? excludeId = null)
         {
             return await _context.Tags
-                .AnyAsync(t => t.Slug == slug && 
-                             !t.IsDeleted && 
+                .AnyAsync(t => t.Slug == slug &&
+                             !t.IsDeleted &&
                              (!excludeId.HasValue || t.Id != excludeId.Value));
         }
 
@@ -132,7 +143,7 @@ namespace TechBlog.Infrastructure.Services
             {
                 var tag = new Tag
                 {
-                    Name = name,
+                    Name = await GenerateUniqueNameAsync(name),
                     Slug = await GenerateUniqueSlugAsync(name)
                 };
                 _context.Tags.Add(tag);
@@ -182,6 +193,32 @@ namespace TechBlog.Infrastructure.Services
             }
 
             return uniqueSlug;
+        }
+
+        private async Task<string> GenerateUniqueNameAsync(string name, int? excludeId = null)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Tag name cannot be empty.", nameof(name));
+
+            // If the name is already unique, return it as-is
+            if (!await TagNameExistsAsync(name, excludeId))
+                return name;
+
+            // Generate unique name by adding numbers
+            string uniqueName = name;
+            int counter = 1;
+
+            while (await TagNameExistsAsync(uniqueName, excludeId))
+            {
+                uniqueName = $"{name}{counter}";
+                counter++;
+
+                // Prevent infinite loops by limiting the counter
+                if (counter > 1000)
+                    throw new InvalidOperationException("Unable to generate a unique tag name. Too many duplicates exist.");
+            }
+
+            return uniqueName;
         }
     }
 }
