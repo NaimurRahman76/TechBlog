@@ -31,12 +31,17 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             _mapper = mapper;
         }
 
-        public async Task<IActionResult> Index(int? page = 1, string? status = null, string? search = null)
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> Index(int? page = 1, string? status = null, string? search = null, string? sortBy = null, int pageSize = 10)
         {
-            ViewData["StatusFilter"] = status;
-            ViewData["CurrentFilter"] = search;
+            // These ViewBag keys are used by the view
+            ViewBag.CurrentStatus = status;
+            ViewBag.CurrentSearch = search;
+            ViewBag.SortBy = sortBy;
 
-            var comments = await _commentService.GetAllCommentsAsync();
+            // Include both approved and pending comments for admin moderation
+            var allComments = await _commentService.GetAllCommentsAsync(includeUnapproved: true);
+            var comments = allComments;
             
             if (!string.IsNullOrEmpty(status))
             {
@@ -54,14 +59,27 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                     c.AuthorEmail.ToLower().Contains(search));
             }
 
-            var model = new CommentListViewModel
+            // Sorting
+            var mapped = _mapper.Map<IEnumerable<CommentAdminListDto>>(comments);
+            mapped = (sortBy ?? "newest").ToLower() switch
             {
-                Comments = _mapper.Map<IEnumerable<CommentAdminListDto>>(comments)
-                    .OrderByDescending(c => c.CreatedAt)
-                    .ToPagedList(page ?? 1, 20),
-                TotalCount = comments.Count()
+                "oldest" => mapped.OrderBy(c => c.CreatedAt),
+                "post" => mapped.OrderBy(c => c.BlogPostTitle).ThenByDescending(c => c.CreatedAt),
+                _ => mapped.OrderByDescending(c => c.CreatedAt)
             };
 
+            var paged = mapped.ToPagedList(page ?? 1, pageSize);
+
+            var model = new CommentListViewModel
+            {
+                Comments = paged,
+                TotalCount = allComments.Count(),
+                ApprovedCount = allComments.Count(c => c.IsApproved),
+                PendingCount = allComments.Count(c => !c.IsApproved),
+                CurrentPage = paged.PageIndex,
+                TotalPages = paged.TotalPages
+            };
+            ViewBag.PageSize = pageSize;
             return View(model);
         }
 
@@ -69,14 +87,7 @@ namespace TechBlog.Web.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Approve(int id)
         {
-            var comment = await _commentService.GetCommentByIdAsync(id);
-            if (comment == null)
-            {
-                return NotFound();
-            }
-
-            comment.IsApproved = true;
-            await _commentService.UpdateCommentAsync(comment);
+            await _commentService.ApproveCommentAsync(id);
             
             TempData["Success"] = "Comment approved successfully!";
             return RedirectToAction(nameof(Index));
@@ -84,16 +95,58 @@ namespace TechBlog.Web.Areas.Admin.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Unapprove(int id)
+        public async Task<IActionResult> BulkAction(string action, int[] commentIds)
         {
-            var comment = await _commentService.GetCommentByIdAsync(id);
-            if (comment == null)
+            if (commentIds == null || commentIds.Length == 0)
             {
-                return NotFound();
+                TempData["Error"] = "No comments selected.";
+                return RedirectToAction(nameof(Index));
             }
 
-            comment.IsApproved = false;
-            await _commentService.UpdateCommentAsync(comment);
+            int processed = 0;
+            foreach (var id in commentIds)
+            {
+                try
+                {
+                    switch ((action ?? string.Empty).ToLower())
+                    {
+                        case "approve":
+                            await _commentService.ApproveCommentAsync(id);
+                            processed++;
+                            break;
+                        case "unapprove":
+                            await _commentService.UnapproveCommentAsync(id);
+                            processed++;
+                            break;
+                        case "delete":
+                            await _commentService.DeleteCommentAsync(id);
+                            processed++;
+                            break;
+                    }
+                }
+                catch
+                {
+                    // Ignore individual failures; continue processing
+                }
+            }
+
+            if (processed > 0)
+            {
+                TempData["Success"] = $"Successfully processed {processed} comment(s).";
+            }
+            else
+            {
+                TempData["Error"] = "No comments were processed.";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Unapprove(int id)
+        {
+            await _commentService.UnapproveCommentAsync(id);
             
             TempData["Success"] = "Comment unapproved successfully!";
             return RedirectToAction(nameof(Index));

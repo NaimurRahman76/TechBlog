@@ -157,68 +157,273 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-comments me-2"></i>Comments (@Model.Post.Comments?.Count() ?? 0)
+                        <i class="fas fa-comments me-2"></i>
+                        <span class="comment-count">Comments (@(Model.Post.Comments?.Count() ?? 0))</span>
                     </h5>
                 </div>
                 <div class="card-body">
                     <!-- Comment Form -->
                     <div class="mb-4">
                         <h6>Leave a Comment</h6>
-                        <form id="commentForm">
+                        <form id="commentForm" asp-controller="Blog" asp-action="AddComment" method="post" data-ajax="true" data-ajax-method="POST" data-ajax-success="onCommentSuccess" data-ajax-failure="onCommentFailure">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="PostId" value="@Model.Post.Id" />
+                            <input type="hidden" name="ParentCommentId" id="parentCommentId" value="" />
+                            <div id="replyingTo" class="alert alert-info py-2 px-3 d-none">
+                                Replying to <strong id="replyingToName"></strong>
+                                <button type="button" id="cancelReply" class="btn btn-sm btn-link">Cancel</button>
+                            </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <input type="text" class="form-control" id="authorName" placeholder="Your Name" required>
+                                    <input type="text" class="form-control" name="AuthorName" id="authorName" placeholder="Your Name" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <input type="email" class="form-control" id="authorEmail" placeholder="Your Email" required>
+                                    <input type="email" class="form-control" name="AuthorEmail" id="authorEmail" placeholder="Your Email" required>
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <textarea class="form-control" id="commentContent" rows="4" placeholder="Write your comment..." required></textarea>
+                                <textarea class="form-control" name="Content" id="commentContent" rows="4" placeholder="Write your comment..." required></textarea>
+                                <div class="invalid-feedback">Please enter your comment.</div>
                             </div>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="submitComment">
+                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                 <i class="fas fa-paper-plane me-2"></i>Post Comment
                             </button>
+                            <div id="commentError" class="alert alert-danger mt-2 d-none" role="alert"></div>
+                            <div id="commentSuccess" class="alert alert-success mt-2 d-none" role="alert">
+                                Comment submitted successfully! It will be visible after moderation.
+                            </div>
                         </form>
                     </div>
 
                     <!-- Comments List -->
-                    <div id="commentsList">
-                        @if (Model.Post.Comments != null && Model.Post.Comments.Any())
-                        {
-                            @foreach (var comment in Model.Post.Comments.OrderByDescending(c => c.CreatedAt))
-                            {
-                                <div class="comment-item border-bottom pb-3 mb-3">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div class="d-flex">
-                                            <div class="me-3">
-                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                                    @comment.AuthorName.Substring(0, 1).ToUpper()
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-1">@comment.AuthorName</h6>
-                                                <small class="text-muted">@comment.CreatedAt.ToString("MMM dd, yyyy 'at' hh:mm tt")</small>
-                                                <p class="mt-2 mb-0">@comment.Content</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-comment fa-3x mb-3"></i>
-                                <p>No comments yet. Be the first to comment!</p>
-                            </div>
-                        }
+                    <div id="commentsList"></div>
+                    <div class="mt-2">
+                        <button id="loadMoreComments" class="btn btn-outline-secondary btn-sm d-none">
+                            <i class="fas fa-chevron-down me-1"></i>Load more comments
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery-ajax-unobtrusive@3.2.6/dist/jquery.unobtrusive-ajax.min.js"></script>
+    <script>
+        function onCommentSuccess(response) {
+            if (response.success) {
+                // Reset form
+                $('#commentForm')[0].reset();
+                
+                // Show success message
+                $('#commentError').addClass('d-none');
+                $('#commentSuccess').removeClass('d-none');
+                
+                // Add the new comment to the top of the list
+                const comment = response.comment;
+                const baseClasses = 'border-bottom pb-3 mb-3';
+                const indentClass = comment.parentCommentId ? 'ms-5' : '';
+                const commentHtml = `
+                    <div class="comment-item ${baseClasses} ${indentClass}" data-comment-id="${comment.id}" data-author-name="${comment.authorName}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        ${comment.authorName.substring(0, 1).toUpperCase()}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">${comment.authorName} ${comment.isAdmin ? '<span class="badge bg-primary">Author</span>' : ''}</h6>
+                                    <p class="text-muted small mb-1">${comment.createdAt}</p>
+                                    <p class="mb-0">${comment.content}</p>
+                                    <button type="button" class="btn btn-link p-0 mt-1 comment-reply-btn">Reply</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Insert as reply or as top-level
+                if (comment.parentCommentId) {
+                    const $parent = $(`#commentsList .comment-item[data-comment-id='${comment.parentCommentId}']`);
+                    if ($parent.length) {
+                        $parent.after(commentHtml);
+                    } else {
+                        $('#commentsList').prepend(commentHtml);
+                    }
+                } else {
+                    $('#commentsList').prepend(commentHtml);
+                }
+                
+                // Reload comments first page to ensure thread consistency
+                $('#commentsList').empty();
+                currentCommentsPage = 1;
+                loadComments(currentCommentsPage);
+                
+                // Hide success message after 5 seconds
+                setTimeout(() => {
+                    $('#commentSuccess').addClass('d-none');
+                }, 5000);
+
+                // Clear reply state
+                $('#parentCommentId').val('');
+                $('#replyingTo').addClass('d-none');
+            } else {
+                onCommentFailure(response);
+            }
+            
+            // Re-enable submit button
+            const $submitBtn = $('#submitComment');
+            $submitBtn.prop('disabled', false);
+            $submitBtn.find('.spinner-border').addClass('d-none');
+            $submitBtn.find('i').removeClass('d-none');
+        }
+        
+        function onCommentFailure(response) {
+            const $errorDiv = $('#commentError');
+            $errorDiv.removeClass('d-none');
+            
+            if (response && response.responseJSON) {
+                $errorDiv.text(response.responseJSON.message || 'An error occurred while submitting your comment.');
+            } else {
+                $errorDiv.text('An error occurred while submitting your comment. Please try again.');
+            }
+            
+            // Re-enable submit button
+            const $submitBtn = $('#submitComment');
+            $submitBtn.prop('disabled', false);
+            $submitBtn.find('.spinner-border').addClass('d-none');
+            $submitBtn.find('i').removeClass('d-none');
+        }
+        
+        let currentCommentsPage = 1;
+        const pageSize = 5;
+        const replyPreviewSize = 5;
+
+        function updateCommentCount() {
+            const topLevelCount = $('#commentsList .top-level-comment').length;
+            $('.comment-count').text(`Comments (${topLevelCount})`);
+        }
+
+        function wireReplyButtons() {
+            // Reply to a comment
+            $(document).off('click', '.comment-reply-btn').on('click', '.comment-reply-btn', function() {
+                const $item = $(this).closest('.comment-item');
+                const id = $item.data('comment-id');
+                const name = $item.data('author-name');
+                $('#parentCommentId').val(id);
+                $('#replyingToName').text(name);
+                $('#replyingTo').removeClass('d-none');
+                $('#commentContent').focus();
+            });
+            // Load more replies
+            $(document).off('click', '.load-more-replies').on('click', '.load-more-replies', function(){
+                const parentId = $(this).data('parent-id');
+                const $btn = $(this);
+                $.ajax({
+                    url: '@Url.Action("RepliesPartial", "Blog")',
+                    data: { postId: @Model.Post.Id, parentCommentId: parentId, baseLevel: 1, _ts: Date.now() },
+                    cache: false
+                }).done(function(html){
+                    const $container = $(`.comment-replies[data-parent-id='${parentId}']`);
+                    $container.html(html);
+                    $btn.remove();
+                });
+            });
+        }
+
+        function loadComments(page) {
+            $('#loadMoreComments').prop('disabled', true);
+            $.ajax({
+                url: '@Url.Action("CommentsPartial", "Blog")',
+                data: { postId: @Model.Post.Id, page: page, pageSize: pageSize, replyPreviewSize: replyPreviewSize, _ts: Date.now() },
+                cache: false
+            }).done(function(html){
+                const $temp = $('<div>').html(html);
+                const hasMore = $temp.find('#commentsPageMeta').data('has-more') === true || $temp.find('#commentsPageMeta').data('has-more') === 'true';
+                const nextPage = parseInt($temp.find('#commentsPageMeta').data('next-page')) || (page + 1);
+                const chunk = $temp.find('#commentsPageChunk').html();
+                $('#commentsList').append(chunk);
+                updateCommentCount();
+                wireReplyButtons();
+                if (hasMore) {
+                    $('#loadMoreComments').removeClass('d-none').off('click').on('click', function(){
+                        currentCommentsPage = nextPage;
+                        loadComments(currentCommentsPage);
+                    }).prop('disabled', false);
+                } else {
+                    $('#loadMoreComments').addClass('d-none');
+                }
+            }).fail(function(){
+                $('#loadMoreComments').addClass('d-none');
+            });
+        }
+
+        $(document).ready(function() {
+            // Handle form submission
+            $('#commentForm').on('submit', function(e) {
+                if (!this.checkValidity()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).addClass('was-validated');
+                    return false;
+                }
+                
+                // Disable submit button and show spinner
+                const $submitBtn = $('#submitComment');
+                $submitBtn.prop('disabled', true);
+                $submitBtn.find('i').addClass('d-none');
+                $submitBtn.find('.spinner-border').removeClass('d-none');
+                
+                // Hide any previous error messages
+                $('#commentError').addClass('d-none');
+                
+                return true;
+            });
+
+            wireReplyButtons();
+
+            // Cancel reply
+            $('#cancelReply').on('click', function() {
+                $('#parentCommentId').val('');
+                $('#replyingTo').addClass('d-none');
+            });
+
+            // Initial comments load
+            $('#commentsList').empty();
+            currentCommentsPage = 1;
+            loadComments(currentCommentsPage);
+        });
+    </script>
+    <script>
+        // Social sharing functions
+        function sharePost(platform) {
+            const url = encodeURIComponent(window.location.href);
+            const title = encodeURIComponent('@Model.Post.Title');
+
+            let shareUrl = '';
+            switch(platform) {
+                case 'twitter':
+                    shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
+                    break;
+                case 'facebook':
+                    shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+                    break;
+            }
+
+            if (shareUrl) {
+                window.open(shareUrl, '_blank', 'width=600,height=400');
+            }
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copied to clipboard!');
+            });
+        }
+    </script>
+}
 
 <style>
 .post-content {
@@ -248,64 +453,3 @@
     font-style: italic;
 }
 </style>
-
-@section Scripts {
-    <script>
-        function sharePost(platform) {
-            const url = encodeURIComponent(window.location.href);
-            const title = encodeURIComponent('@Model.Post.Title');
-            
-            let shareUrl = '';
-            switch(platform) {
-                case 'twitter':
-                    shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
-                    break;
-                case 'facebook':
-                    shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-                    break;
-            }
-            
-            if (shareUrl) {
-                window.open(shareUrl, '_blank', 'width=600,height=400');
-            }
-        }
-
-        // Comment form submission
-        document.getElementById('commentForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const postId = @Model.Post.Id;
-            const authorName = document.getElementById('authorName').value;
-            const authorEmail = document.getElementById('authorEmail').value;
-            const content = document.getElementById('commentContent').value;
-            
-            fetch('/Blog/AddComment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `postId=${postId}&authorName=${encodeURIComponent(authorName)}&authorEmail=${encodeURIComponent(authorEmail)}&content=${encodeURIComponent(content)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Comment submitted successfully!');
-                    document.getElementById('commentForm').reset();
-                    location.reload(); // Reload to show new comment
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while submitting your comment.');
-            });
-        });
-
-        function copyLink() {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                alert('Link copied to clipboard!');
-            });
-        }
-    </script>
-}

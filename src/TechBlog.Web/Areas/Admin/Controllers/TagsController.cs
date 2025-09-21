@@ -26,9 +26,10 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             _mapper = mapper;
         }
 
-        public async Task<IActionResult> Index(int? page = 1, string? search = null)
+        public async Task<IActionResult> Index(int? page = 1, string? search = null, int pageSize = 10)
         {
             ViewData["CurrentFilter"] = search;
+            ViewBag.CurrentSearch = search;
 
             var tags = await _tagService.GetAllTagsAsync();
             
@@ -38,14 +39,18 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                 tags = tags.Where(t => t.Name.ToLower().Contains(search));
             }
 
+            var paged = _mapper.Map<IEnumerable<TagDto>>(tags)
+                .OrderBy(t => t.Name)
+                .ToPagedList(page ?? 1, pageSize);
+
             var model = new TagListViewModel
             {
-                Tags = _mapper.Map<IEnumerable<TagDto>>(tags)
-                    .OrderBy(t => t.Name)
-                    .ToPagedList(page ?? 1, 20),
-                TotalCount = tags.Count()
+                Tags = paged,
+                TotalCount = tags.Count(),
+                CurrentPage = paged.PageIndex,
+                TotalPages = paged.TotalPages
             };
-
+            ViewBag.PageSize = pageSize;
             return View(model);
         }
 

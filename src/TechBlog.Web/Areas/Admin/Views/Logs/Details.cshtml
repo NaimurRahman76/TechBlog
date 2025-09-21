@@ -1,0 +1,48 @@
+@model TechBlog.Core.Entities.LogEntry
+@{
+    ViewData["Title"] = "Log Details";
+}
+<div class="container-fluid">
+    <h1 class="h3 mb-4"><i class="fas fa-file-alt me-2"></i>Log Details</h1>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">ID</dt>
+                <dd class="col-sm-9">@Model.Id</dd>
+
+                <dt class="col-sm-3">Created (UTC)</dt>
+                <dd class="col-sm-9">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                <dt class="col-sm-3">Level</dt>
+                <dd class="col-sm-9">@Model.Level</dd>
+
+                <dt class="col-sm-3">Source</dt>
+                <dd class="col-sm-9">@Model.Source</dd>
+
+                <dt class="col-sm-3">User</dt>
+                <dd class="col-sm-9">@Model.UserId</dd>
+
+                <dt class="col-sm-3">IP Address</dt>
+                <dd class="col-sm-9">@Model.IpAddress</dd>
+
+                <dt class="col-sm-3">User Agent</dt>
+                <dd class="col-sm-9 text-wrap">@Model.UserAgent</dd>
+
+                <dt class="col-sm-3">Message</dt>
+                <dd class="col-sm-9 text-wrap">@Model.Message</dd>
+
+                <dt class="col-sm-3">Exception</dt>
+                <dd class="col-sm-9"><pre class="mb-0">@Model.Exception</pre></dd>
+            </dl>
+        </div>
+        <div class="card-footer">
+            <a asp-action="Index" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Back</a>
+        </div>
+    </div>
+</div>
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}

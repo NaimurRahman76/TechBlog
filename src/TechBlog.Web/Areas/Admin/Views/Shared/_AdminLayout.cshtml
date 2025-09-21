@@ -60,6 +60,16 @@
                             <i class="fas fa-users me-2"></i> Users
                         </a>
                     </li>
+                    <li>
+                        <a asp-area="Admin" asp-controller="Logs" asp-action="Index" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Logs" ? "active" : "")">
+                            <i class="fas fa-clipboard-list me-2"></i> Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a asp-area="Admin" asp-controller="Utilities" asp-action="Index" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Utilities" ? "active" : "")">
+                            <i class="fas fa-broom me-2"></i> Utilities
+                        </a>
+                    </li>
                     <li class="mt-4">
                         <a href="/" class="nav-link text-white">
                             <i class="fas fa-arrow-left me-2"></i> Back to Site
@@ -79,6 +89,12 @@
                     </button>
                     
                     <div class="d-flex align-items-center ms-auto">
+                        <form asp-area="Admin" asp-controller="Utilities" asp-action="ClearCache" method="post" class="me-3 d-none d-md-block">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                <i class="fas fa-broom me-1"></i>Clear Cache
+                            </button>
+                        </form>
                         <div class="dropdown">
                             <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="/img/avatar.png" alt="" width="32" height="32" class="rounded-circle me-2">

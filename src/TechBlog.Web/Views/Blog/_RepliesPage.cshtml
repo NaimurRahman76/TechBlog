@@ -1,0 +1,11 @@
+@model IEnumerable<TechBlog.Core.DTOs.CommentDto>
+@{
+    Layout = null;
+}
+<div class="repliesPageChunk">
+    @await Html.PartialAsync("_RepliesThread", Model)
+</div>
+<div class="repliesPageMeta"
+     data-has-more="@((ViewBag.HasMore ?? false).ToString().ToLower())"
+     data-next-page="@((int)(ViewBag.NextPage ?? 2))"
+     style="display:none"></div>

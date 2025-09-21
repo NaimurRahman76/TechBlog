@@ -19,6 +19,7 @@ namespace TechBlog.Core.DTOs
         public string PostSlug { get; set; }
         public string BlogPostTitle { get; set; }
         public string BlogPostSlug { get; set; }
+        public int ReplyCount { get; set; }
         public ICollection<CommentDto> Replies { get; set; } = new List<CommentDto>();
     }
 

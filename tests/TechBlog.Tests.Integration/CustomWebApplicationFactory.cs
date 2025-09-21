@@ -20,9 +20,10 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
                 services.Remove(descriptor);
             }
 
+            var dbName = $"InMemoryDbForTesting_{Guid.NewGuid()}";
             services.AddDbContext<ApplicationDbContext>(options =>
             {
-                options.UseInMemoryDatabase("InMemoryDbForTesting");
+                options.UseInMemoryDatabase(dbName);
             });
         });
 

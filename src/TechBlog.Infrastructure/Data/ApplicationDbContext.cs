@@ -17,6 +17,7 @@ namespace TechBlog.Infrastructure.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<BlogPostTag> BlogPostTags { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<LogEntry> LogEntries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,10 +68,15 @@ namespace TechBlog.Infrastructure.Data
                 .HasOne(c => c.ParentComment)
                 .WithMany(pc => pc.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
             // Apply configurations
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+            // Logs index for faster querying
+            modelBuilder.Entity<LogEntry>()
+                .HasIndex(l => l.CreatedAt);
         }
     }
 }

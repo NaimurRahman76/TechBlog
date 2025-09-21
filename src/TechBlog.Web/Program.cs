@@ -1,10 +1,14 @@
+using System;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using TechBlog.Core.Entities;
 using TechBlog.Core.Interfaces;
 using TechBlog.Infrastructure.Data;
 using TechBlog.Infrastructure.Services;
 using TechBlog.Infrastructure.Mappings;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +47,15 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<ILoggingService, LoggingService>();
+
+// Add WorkContext and related services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IWorkContext, WorkContext>();
+
+// Add memory cache
+builder.Services.AddMemoryCache();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfiles));
@@ -59,32 +72,52 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
-    // Apply pending migrations in development
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        try
-        {
-            var context = services.GetRequiredService<ApplicationDbContext>();
-            context.Database.Migrate();
-            
-            // Seed initial data
-            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-            await SeedData.InitializeAsync(services, userManager, roleManager);
-        }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred while migrating or seeding the database.");
-        }
-    }
 }
 else
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+// Database migration and seeding
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        if (context.Database.GetPendingMigrations().Any())
+        {
+            await context.Database.MigrateAsync();
+        }
+        
+        // Seed initial data
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        await SeedData.InitializeAsync(services, userManager, roleManager);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating or seeding the database.");
+    }
+}
+
+// Global exception logging middleware (custom)
+app.UseMiddleware<TechBlog.Web.Middleware.ExceptionLoggingMiddleware>();
+
+// Add simple request logging to console
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Handling request: {Method} {Path}", 
+        context.Request.Method, context.Request.Path);
+    
+    await next();
+    
+    logger.LogInformation("Finished handling request: {Method} {Path} - {StatusCode}",
+        context.Request.Method, context.Request.Path, context.Response.StatusCode);
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
