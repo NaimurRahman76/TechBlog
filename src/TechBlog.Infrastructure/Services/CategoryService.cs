@@ -42,6 +42,9 @@ namespace TechBlog.Infrastructure.Services
             if (category == null)
                 throw new ArgumentNullException(nameof(category));
 
+            // Ensure the name is unique by auto-generating if needed
+            category.Name = await GenerateUniqueNameAsync(category.Name);
+
             // Ensure the slug is unique
             category.Slug = await GenerateUniqueSlugAsync(category.Slug ?? category.Name);
             
@@ -59,8 +62,8 @@ namespace TechBlog.Infrastructure.Services
             if (existingCategory == null)
                 throw new KeyNotFoundException($"Category with ID {category.Id} not found.");
 
-            // Ensure the slug is unique
-            existingCategory.Name = category.Name;
+            // Ensure the name is unique by auto-generating if needed
+            existingCategory.Name = await GenerateUniqueNameAsync(category.Name, category.Id);
             existingCategory.Description = category.Description;
             existingCategory.Slug = await GenerateUniqueSlugAsync(category.Slug ?? category.Name, category.Id);
             existingCategory.UpdatedAt = DateTime.UtcNow;
@@ -90,11 +93,19 @@ namespace TechBlog.Infrastructure.Services
             return await _context.Categories.AnyAsync(c => c.Id == id);
         }
 
+        public async Task<bool> CategoryNameExistsAsync(string name, int? excludeId = null)
+        {
+            return await _context.Categories
+                .AnyAsync(c => c.Name == name &&
+                             !c.IsDeleted &&
+                             (!excludeId.HasValue || c.Id != excludeId.Value));
+        }
+
         public async Task<bool> CategorySlugExistsAsync(string slug, int? excludeId = null)
         {
             return await _context.Categories
-                .AnyAsync(c => c.Slug == slug && 
-                             !c.IsDeleted && 
+                .AnyAsync(c => c.Slug == slug &&
+                             !c.IsDeleted &&
                              (!excludeId.HasValue || c.Id != excludeId.Value));
         }
 
@@ -138,6 +149,32 @@ namespace TechBlog.Infrastructure.Services
             }
 
             return uniqueSlug;
+        }
+
+        private async Task<string> GenerateUniqueNameAsync(string name, int? excludeId = null)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Category name cannot be empty.", nameof(name));
+
+            // If the name is already unique, return it as-is
+            if (!await CategoryNameExistsAsync(name, excludeId))
+                return name;
+
+            // Generate unique name by adding numbers
+            string uniqueName = name;
+            int counter = 1;
+
+            while (await CategoryNameExistsAsync(uniqueName, excludeId))
+            {
+                uniqueName = $"{name}{counter}";
+                counter++;
+
+                // Prevent infinite loops by limiting the counter
+                if (counter > 1000)
+                    throw new InvalidOperationException("Unable to generate a unique category name. Too many duplicates exist.");
+            }
+
+            return uniqueName;
         }
     }
 }

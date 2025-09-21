@@ -18,7 +18,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 // Configure DbContext with SQL Server LocalDB
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString, b => b.MigrationsAssembly("TechBlog.Infrastructure")));
+    options.UseSqlServer(connectionString, b => b.MigrationsAssembly("TechBlog.Web")));
 
 // Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -86,11 +86,30 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        if (context.Database.GetPendingMigrations().Any())
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        var pending = await context.Database.GetPendingMigrationsAsync();
+        var applied = await context.Database.GetAppliedMigrationsAsync();
+
+        if (!applied.Any() && !pending.Any())
         {
+            // No migrations exist at all (e.g., migration files missing). EnsureCreated as a fallback.
+            logger.LogWarning("No EF Core migrations found (applied or pending). Calling EnsureCreated to create schema from the model. Consider adding an InitialCreate migration for proper migration history.");
+            await context.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            if (pending.Any())
+            {
+                logger.LogInformation("Applying {Count} pending migrations: {Migrations}", pending.Count(), string.Join(", ", pending));
+            }
+            else
+            {
+                logger.LogInformation("No pending migrations detected.");
+            }
             await context.Database.MigrateAsync();
         }
-        
+
         // Seed initial data
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();

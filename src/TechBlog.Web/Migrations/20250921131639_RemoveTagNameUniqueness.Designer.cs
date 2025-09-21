@@ -9,11 +9,11 @@ using TechBlog.Infrastructure.Data;
 
 #nullable disable
 
-namespace TechBlog.Infrastructure.Migrations
+namespace TechBlog.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250914220227_AddLogEntry")]
-    partial class AddLogEntry
+    [Migration("20250921131639_RemoveTagNameUniqueness")]
+    partial class RemoveTagNameUniqueness
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

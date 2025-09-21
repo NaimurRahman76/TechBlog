@@ -3,14 +3,22 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace TechBlog.Infrastructure.Migrations
+namespace TechBlog.Web.Migrations
 {
     /// <inheritdoc />
-    public partial class AddLogEntry : Migration
+    public partial class AddLogEntriesTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<int>(
+                name: "ParentCommentId",
+                table: "Comments",
+                type: "int",
+                nullable: true,
+                oldClrType: typeof(int),
+                oldType: "int");
+
             migrationBuilder.CreateTable(
                 name: "LogEntries",
                 columns: table => new
@@ -44,6 +52,16 @@ namespace TechBlog.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "LogEntries");
+
+            migrationBuilder.AlterColumn<int>(
+                name: "ParentCommentId",
+                table: "Comments",
+                type: "int",
+                nullable: false,
+                defaultValue: 0,
+                oldClrType: typeof(int),
+                oldType: "int",
+                oldNullable: true);
         }
     }
 }

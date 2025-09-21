@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using TechBlog.Core.Interfaces;
+using TechBlog.Core.Entities;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using TechBlog.Core.DTOs;
-using TechBlog.Core.Entities;
-using TechBlog.Core.Interfaces;
 using TechBlog.Web.Areas.Admin.Models;
+using Microsoft.AspNetCore.Identity;
+using System.Linq;
 using TechBlog.Web.Extensions;
+using TechBlog.Core.DTOs;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace TechBlog.Web.Areas.Admin.Controllers
 {
@@ -46,29 +46,41 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             ViewBag.CurrentStatus = status;
 
             var posts = await _blogService.GetAllPostsAsync(includeUnpublished: true);
-            
+
             if (!string.IsNullOrEmpty(search))
             {
                 search = search.ToLower();
-                posts = posts.Where(p => p.Title.ToLower().Contains(search) || 
+                posts = posts.Where(p => p.Title.ToLower().Contains(search) ||
                                        p.Content.ToLower().Contains(search));
             }
 
             if (!string.IsNullOrEmpty(status))
             {
-                posts = status.ToLower() == "published" 
+                posts = status.ToLower() == "published"
                     ? posts.Where(p => p.IsPublished)
                     : posts.Where(p => !p.IsPublished);
             }
 
-            var paged = _mapper.Map<IEnumerable<PostAdminListDto>>(posts)
+            // Apply pagination to the original query
+            var paged = posts
                 .OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
                 .ToPagedList(page ?? 1, pageSize);
 
+            // Map only the items for this page
+            var pagedItems = _mapper.Map<IEnumerable<PostAdminListDto>>(paged);
+
+            // Create new paged list with mapped items but preserve pagination metadata
+            var pagedMappedItems = new TechBlog.Web.Extensions.PagedList<PostAdminListDto>(
+                pagedItems.ToList(),
+                paged.TotalCount,
+                paged.PageIndex,
+                paged.PageSize
+            );
+
             var model = new BlogPostListViewModel
             {
-                BlogPosts = paged,
-                TotalCount = posts.Count(),
+                BlogPosts = pagedMappedItems,
+                TotalCount = paged.TotalCount,
                 CurrentPage = paged.PageIndex,
                 TotalPages = paged.TotalPages
             };
@@ -113,6 +125,43 @@ namespace TechBlog.Web.Areas.Admin.Controllers
                     ModelState.AddModelError("", "Unable to retrieve user information.");
                     await PrepareViewBagForPostEdit();
                     return View(model);
+                }
+
+                // Check if the user exists in the database
+                var userService = HttpContext.RequestServices.GetRequiredService<IUserService>();
+                var userManager = HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+
+                // First try to find by email
+                var currentUser = await userManager.FindByEmailAsync(User.GetUserEmail());
+                if (currentUser == null)
+                {
+                    // Try to find by ID
+                    currentUser = await userManager.FindByIdAsync(authorId);
+                }
+
+                if (currentUser == null)
+                {
+                    // Create the user if they don't exist
+                    var newUser = new ApplicationUser
+                    {
+                        Id = authorId,
+                        UserName = User.GetUserName(), // Use the actual username, not email
+                        Email = User.GetUserEmail(),
+                        FirstName = User.GetUserName() ?? "User",
+                        LastName = "",
+                        EmailConfirmed = true
+                    };
+
+                    var createResult = await userManager.CreateAsync(newUser);
+                    if (!createResult.Succeeded)
+                    {
+                        ModelState.AddModelError("", $"Unable to create user account: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+                        await PrepareViewBagForPostEdit();
+                        return View(model);
+                    }
+
+                    // Add to User role by default
+                    await userManager.AddToRoleAsync(newUser, "User");
                 }
 
                 // Handle image upload
