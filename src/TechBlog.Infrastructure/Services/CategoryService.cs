@@ -22,6 +22,7 @@ namespace TechBlog.Infrastructure.Services
         public async Task<IEnumerable<Category>> GetAllCategoriesAsync()
         {
             return await _context.Categories
+                .Include(c => c.BlogPosts)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
         }
@@ -104,51 +105,30 @@ namespace TechBlog.Infrastructure.Services
         public async Task<bool> CategorySlugExistsAsync(string slug, int? excludeId = null)
         {
             return await _context.Categories
-                .AnyAsync(c => c.Slug == slug &&
+                .AnyAsync(c => c.Slug == slug && 
                              !c.IsDeleted &&
                              (!excludeId.HasValue || c.Id != excludeId.Value));
         }
 
         public async Task<int> GetTotalCategoriesCountAsync()
         {
-            return await _context.Categories.CountAsync(c => !c.IsDeleted);
+            return await _context.Categories.CountAsync();
         }
 
-        private async Task<string> GenerateUniqueSlugAsync(string name, int? excludeId = null)
+        public async Task<Category> GetCategoryByIdWithPostsAsync(int id, bool includeUnpublished = false)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Category name cannot be empty.", nameof(name));
+            var query = _context.Categories
+                .Include(c => c.BlogPosts)
+                    .ThenInclude(p => p.Author)
+                .AsNoTracking()
+                .AsQueryable();
 
-            var slug = name.ToLower()
-                .Replace(" ", "-")
-                .Replace("&", "and")
-                .Replace("+", "plus")
-                .Replace("#", "sharp");
-            
-            // Remove invalid characters
-            slug = System.Text.RegularExpressions.Regex.Replace(slug, "[^a-z0-9-]", "");
-            
-            // Remove duplicate hyphens
-            slug = System.Text.RegularExpressions.Regex.Replace(slug, "-{2,}", "-");
-            
-            // Trim hyphens from start and end
-            slug = slug.Trim('-');
-
-            // If empty, use a default slug
-            if (string.IsNullOrEmpty(slug))
-                slug = "category";
-
-            // Make sure the slug is unique
-            string uniqueSlug = slug;
-            int counter = 1;
-
-            while (await CategorySlugExistsAsync(uniqueSlug, excludeId))
+            if (!includeUnpublished)
             {
-                uniqueSlug = $"{slug}-{counter}";
-                counter++;
+                query = query.Where(c => c.BlogPosts.Any(p => p.IsPublished));
             }
 
-            return uniqueSlug;
+            return await query.FirstOrDefaultAsync(c => c.Id == id);
         }
 
         private async Task<string> GenerateUniqueNameAsync(string name, int? excludeId = null)
@@ -163,18 +143,64 @@ namespace TechBlog.Infrastructure.Services
             // Generate unique name by adding numbers
             string uniqueName = name;
             int counter = 1;
-
             while (await CategoryNameExistsAsync(uniqueName, excludeId))
             {
                 uniqueName = $"{name}{counter}";
                 counter++;
 
-                // Prevent infinite loops by limiting the counter
+                // Safety check to prevent infinite loops
                 if (counter > 1000)
-                    throw new InvalidOperationException("Unable to generate a unique category name. Too many duplicates exist.");
+                    throw new InvalidOperationException("Unable to generate a unique category name after 1000 attempts.");
             }
 
             return uniqueName;
+        }
+
+        private async Task<string> GenerateUniqueSlugAsync(string slug, int? excludeId = null)
+        {
+            if (string.IsNullOrWhiteSpace(slug))
+                throw new ArgumentException("Slug cannot be empty.", nameof(slug));
+
+            // Convert to URL-friendly slug
+            var urlFriendlySlug = slug.ToLowerInvariant()
+                .Replace(" ", "-")
+                .Replace("&", "and")
+                .Replace("#", "sharp")
+                .Replace("+", "plus");
+
+            // Remove invalid characters
+            urlFriendlySlug = new string(urlFriendlySlug
+                .Where(c => char.IsLetterOrDigit(c) || c == '-')
+                .ToArray());
+
+            // Remove duplicate dashes
+            while (urlFriendlySlug.Contains("--"))
+            {
+                urlFriendlySlug = urlFriendlySlug.Replace("--", "-");
+            }
+
+            // Trim dashes from beginning and end
+            urlFriendlySlug = urlFriendlySlug.Trim(' ', '-');
+
+            // If the slug is already unique, return it as-is
+            if (!await CategorySlugExistsAsync(urlFriendlySlug, excludeId))
+                return urlFriendlySlug;
+
+            // Generate unique slug by adding numbers
+            string uniqueSlug = urlFriendlySlug;
+            int counter = 1;
+
+            while (await CategorySlugExistsAsync(uniqueSlug, excludeId))
+            {
+                uniqueSlug = $"{urlFriendlySlug}-{counter}";
+                counter++;
+
+                // safety check to prevent infinite loops
+                if (counter > 1000)
+                    throw new InvalidOperationException("Unable to generate a unique slug after 1000 attempts.");
+            }
+
+            return uniqueSlug;
         }
     }
 }

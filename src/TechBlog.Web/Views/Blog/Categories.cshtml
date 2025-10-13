@@ -1,0 +1,91 @@
+@model IEnumerable<TechBlog.Core.DTOs.CategoryDto>
+@{
+    ViewData["Title"] = "Categories";
+    ViewData["Description"] = "Browse all blog post categories";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h1 class="mb-4">All Categories</h1>
+            
+            @if (Model.Any())
+            {
+                <div class="row row-cols-1 row-cols-md-2 g-4">
+                    @foreach (var category in Model)
+                    {
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <h2 class="h4 card-title">
+                                        <a asp-controller="Blog" 
+                                           asp-action="Category" 
+                                           asp-route-category="@category.Slug" 
+                                           class="text-decoration-none">
+                                            @category.Name
+                                        </a>
+                                    </h2>
+                                    
+                                    @if (!string.IsNullOrEmpty(category.Description))
+                                    {
+                                        <p class="card-text text-muted">@category.Description</p>
+                                    }
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-primary">
+                                            @category.PostsCount @(category.PostsCount == 1 ? "Post" : "Posts")
+                                        </span>
+                                        <a asp-controller="Blog" 
+                                           asp-action="Category" 
+                                           asp-route-category="@category.Slug" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            View Posts <i class="fas fa-arrow-right ms-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No categories found.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border: none;
+            border-radius: 0.5rem;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        .card-title a {
+            color: #212529;
+            transition: color 0.2s;
+        }
+        
+        .card-title a:hover {
+            color: #0d6efd;
+            text-decoration: none;
+        }
+        
+        .badge {
+            font-size: 0.85rem;
+            padding: 0.4em 0.8em;
+        }
+    </style>
+}

@@ -185,27 +185,62 @@ namespace TechBlog.Web.Controllers
 
         public async Task<IActionResult> Index(int page = 1, string search = null, int pageSize = 10)
         {
-            
-            var posts = string.IsNullOrEmpty(search) 
+
+            var posts = string.IsNullOrEmpty(search)
                 ? await _blogService.GetAllPostsAsync()
                 : await _blogService.SearchPostsAsync(search);
-            
+
             var postDtos = _mapper.Map<IEnumerable<PostListDto>>(posts);
-            
+
+            // Get all categories with post counts
+            var categories = await _categoryService.GetAllCategoriesAsync();
+            var categoryDtos = categories.Select(c => new CategoryDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description,
+                Slug = c.Slug,
+                PostsCount = c.BlogPosts?.Count ?? 0
+            }).OrderBy(c => c.Name).ToList();
+
             var model = new BlogIndexViewModel
             {
                 Posts = postDtos.Skip((page - 1) * pageSize).Take(pageSize),
+                Categories = categoryDtos,
                 CurrentPage = page,
                 TotalPages = (int)Math.Ceiling(postDtos.Count() / (double)pageSize),
                 SearchTerm = search
             };
-            ViewBag.PageSize = pageSize;
-            
+
             return View(model);
         }
 
-        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public async Task<IActionResult> Details(string slug)
+        [HttpGet("categories")]
+        public async Task<IActionResult> Categories()
+        {
+            try
+            {
+                var categories = await _categoryService.GetAllCategoriesAsync();
+                var categoryDtos = categories.Select(c => new CategoryDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Slug = c.Slug,
+                    PostsCount = c.BlogPosts?.Count ?? 0
+                }).OrderBy(c => c.Name).ToList();
+
+                return View(categoryDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving categories");
+                return StatusCode(500, "An error occurred while retrieving categories.");
+            }
+        }
+
+        [HttpGet("blog/{slug}", Name = "BlogPost")]
+        public async Task<IActionResult> Post(string slug)
         {
             if (string.IsNullOrEmpty(slug))
             {
@@ -243,6 +278,7 @@ namespace TechBlog.Web.Controllers
             return View(model);
         }
 
+        [HttpGet("category/{slug}", Name = "BlogCategory")]
         public async Task<IActionResult> Category(string slug, int page = 1, int pageSize = 10)
         {
             if (string.IsNullOrEmpty(slug))

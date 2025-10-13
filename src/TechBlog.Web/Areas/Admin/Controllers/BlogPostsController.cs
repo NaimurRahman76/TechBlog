@@ -314,6 +314,18 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             return RedirectToAction(nameof(Edit), new { id });
         }
 
+        public async Task<IActionResult> Details(int id)
+        {
+            var post = await _blogService.GetPostByIdAsync(id);
+            if (post == null)
+            {
+                return NotFound();
+            }
+
+            var model = _mapper.Map<PostDetailDto>(post);
+            return View(model);
+        }
+
         private async Task PrepareViewBagForPostEdit()
         {
             ViewBag.Categories = new SelectList(await _categoryService.GetAllCategoriesAsync(), "Id", "Name");

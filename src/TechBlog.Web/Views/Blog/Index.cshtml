@@ -96,7 +96,7 @@
                                         </small>
                                     </div>
                                     <h5 class="card-title">
-                                        <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none">@post.Title</a>
+                                        <a href="/blog/@post.Slug" class="text-decoration-none">@post.Title</a>
                                     </h5>
                                     <p class="card-text">@post.Summary</p>
                                     <div class="d-flex justify-content-between align-items-center">
@@ -172,16 +172,64 @@
         <div class="col-lg-4">
             <!-- Categories Widget -->
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-folder me-2"></i>Categories
                     </h5>
+                    @{
+                        var categoryCount = Model.Categories?.Count() ?? 0;
+                        var hasCategories = categoryCount > 0;
+                        var showViewAll = categoryCount > 6;
+                    }
+                    @if (showViewAll)
+                    {
+                        <a asp-controller="Blog" asp-action="Categories" class="btn btn-sm btn-outline-primary">
+                            View All <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    }
                 </div>
                 <div class="card-body">
-                    <div class="text-muted text-center py-3">
-                        <i class="fas fa-folder-open fa-2x mb-2"></i>
-                        <p class="mb-0">No categories yet</p>
-                    </div>
+                    @if (hasCategories)
+                    {
+                        // Show only the first 6 categories
+                        var categoriesToShow = Model.Categories.Take(6);
+                        
+                        <div class="list-group list-group-flush">
+                            @foreach (var category in categoriesToShow)
+                            {
+                                <a asp-controller="Blog" 
+                                   asp-action="Category" 
+                                   asp-route-slug="@category.Slug" 
+                                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                    @category.Name
+                                    <span class="badge bg-primary rounded-pill">@category.PostsCount</span>
+                                </a>
+                            }
+                        </div>
+                        
+                        <!-- Debug Info (remove in production) -->
+                        <div class="small text-muted mt-2">
+                            <div>Total Categories: @categoryCount</div>
+                            <div>Categories to Show: @categoriesToShow.Count()</div>
+                        </div>
+                        
+                        <!-- Show "View All" link at the bottom if there are more than 6 categories -->
+                        @if (showViewAll)
+                        {
+                            <div class="text-center mt-3">
+                                <a asp-controller="Blog" asp-action="Categories" class="text-decoration-none">
+                                    View All Categories <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-muted text-center py-3">
+                            <i class="fas fa-folder-open fa-2x mb-2"></i>
+                            <p class="mb-0">No categories yet</p>
+                        </div>
+                    }
                 </div>
             </div>
 

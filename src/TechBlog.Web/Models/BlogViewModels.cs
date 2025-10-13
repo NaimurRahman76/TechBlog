@@ -5,6 +5,7 @@ namespace TechBlog.Web.Models
     public class BlogIndexViewModel
     {
         public IEnumerable<PostListDto> Posts { get; set; } = new List<PostListDto>();
+        public IEnumerable<CategoryDto> Categories { get; set; } = new List<CategoryDto>();
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
         public string? SearchTerm { get; set; }

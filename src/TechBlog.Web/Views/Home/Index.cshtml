@@ -35,11 +35,23 @@
 <!-- Featured Categories -->
 <section class="categories-section mb-5">
     <div class="container">
-        <h2 class="text-center mb-5">
-            <i class="fas fa-folder-open me-2"></i>Explore Categories
-        </h2>
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h2 class="mb-0">
+                <i class="fas fa-folder-open me-2"></i>Explore Categories
+            </h2>
+            @{
+                var categoryCount = Model.Categories?.Count() ?? 0;
+                var showViewAll = categoryCount > 6;
+            }
+            @if (showViewAll)
+            {
+                <a asp-controller="Blog" asp-action="Categories" class="btn btn-outline-primary">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            }
+        </div>
         <div class="row">
-            @if (Model.Categories.Any())
+            @if (categoryCount > 0)
             {
                 @foreach (var category in Model.Categories.Take(6))
                 {
@@ -49,7 +61,9 @@
                                 <i class="fas fa-folder fa-3x text-primary mb-3"></i>
                                 <h5 class="card-title">@category.Name</h5>
                                 <p class="card-text">@(category.Description ?? "Explore posts in this category")</p>
-                                <a asp-controller="Blog" asp-action="Category" asp-route-slug="@category.Slug" class="btn btn-outline-primary">Explore Posts</a>
+                                <a asp-controller="Blog" asp-action="Category" asp-route-slug="@category.Slug" class="btn btn-outline-primary">
+                                    View @(category.PostsCount > 0 ? $"({category.PostsCount})" : "") Posts
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -104,7 +118,7 @@
                                     <small class="text-muted">@post.CreatedAt.ToString("MMM dd")</small>
                                 </div>
                                 <h5 class="card-title">
-                                    <a asp-controller="Blog" asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none">@post.Title</a>
+                                    <a href="/blog/@post.Slug" class="text-decoration-none">@post.Title</a>
                                 </h5>
                                 <p class="card-text">@post.Summary</p>
                                 <div class="d-flex justify-content-between align-items-center">
@@ -122,7 +136,7 @@
                                 }
                             </div>
                             <div class="card-footer bg-transparent">
-                                <a asp-controller="Blog" asp-action="Details" asp-route-slug="@post.Slug" class="btn btn-outline-primary btn-sm">
+                                <a href="/blog/@post.Slug" class="btn btn-outline-primary btn-sm">
                                     <i class="fas fa-arrow-right me-1"></i>Read More
                                 </a>
                             </div>

@@ -16,6 +16,9 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+// Add AutoMapper
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
 // Configure DbContext with SQL Server LocalDB
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, b => b.MigrationsAssembly("TechBlog.Web")));
@@ -155,6 +158,25 @@ app.MapAreaControllerRoute(
     areaName: "Admin",
     pattern: "Admin/{controller=Dashboard}/{action=Index}/{id?}");
 
+// Specific route for blog posts
+app.MapControllerRoute(
+    name: "blogPost",
+    pattern: "blog/{slug}",
+    defaults: new { controller = "Blog", action = "Post" });
+
+// Specific route for blog categories
+app.MapControllerRoute(
+    name: "blogCategory",
+    pattern: "category/{slug}",
+    defaults: new { controller = "Blog", action = "Category" });
+
+// Specific route for blog tags
+app.MapControllerRoute(
+    name: "blogTag",
+    pattern: "tag/{slug}",
+    defaults: new { controller = "Blog", action = "Tag" });
+
+// Default route
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

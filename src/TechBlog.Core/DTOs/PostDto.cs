@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace TechBlog.Core.DTOs
 {
@@ -28,12 +29,23 @@ namespace TechBlog.Core.DTOs
 
     public class CreatePostDto
     {
+        [Required(ErrorMessage = "Title is required")]
         public string Title { get; set; }
+        
         public string? Slug { get; set; }
+        
+        [Required(ErrorMessage = "Content is required")]
         public string Content { get; set; }
+        
+        [Required(ErrorMessage = "Summary is required")]
         public string Summary { get; set; }
+        
         public bool IsPublished { get; set; }
+        
+        [Required(ErrorMessage = "Please select a category")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid category")]
         public int CategoryId { get; set; }
+        
         public string? Tags { get; set; }
         public string? FeaturedImageUrl { get; set; }
     }

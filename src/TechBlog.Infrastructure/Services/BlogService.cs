@@ -76,10 +76,12 @@ namespace TechBlog.Infrastructure.Services
         {
             return await _context.BlogPostTags
                 .Where(pt => pt.TagId == tagId)
+                .Include(pt => pt.BlogPost)
+                    .ThenInclude(p => p.Category)
+                .Include(pt => pt.BlogPost)
+                    .ThenInclude(p => p.Author)
                 .Select(pt => pt.BlogPost)
                 .Where(p => p.IsPublished)
-                .Include(p => p.Category)
-                .Include(p => p.Author)
                 .OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
                 .ToListAsync();
         }

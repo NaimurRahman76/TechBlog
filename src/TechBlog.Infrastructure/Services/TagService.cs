@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TechBlog.Core.DTOs;
 using TechBlog.Core.Entities;
 using TechBlog.Core.Interfaces;
 using TechBlog.Infrastructure.Data;
@@ -33,8 +34,11 @@ namespace TechBlog.Infrastructure.Services
 
         public async Task<Tag> GetTagBySlugAsync(string slug)
         {
+            if (string.IsNullOrEmpty(slug))
+                return null;
+
             return await _context.Tags
-                .FirstOrDefaultAsync(t => t.Slug == slug);
+                .FirstOrDefaultAsync(t => t.Slug != null && t.Slug.ToLower() == slug.ToLower());
         }
 
         public async Task<Tag> CreateTagAsync(Tag tag)
@@ -115,7 +119,7 @@ namespace TechBlog.Infrastructure.Services
 
         public async Task<IEnumerable<Tag>> GetOrCreateTagsByNamesAsync(string[] tagNames)
         {
-            if (tagNames == null || tagNames.Length == 0)
+            if (tagNames == null || !tagNames.Any())
                 return Enumerable.Empty<Tag>();
 
             var normalizedNames = tagNames
@@ -168,13 +172,13 @@ namespace TechBlog.Infrastructure.Services
                 .Replace("&", "and")
                 .Replace("+", "plus")
                 .Replace("#", "sharp");
-            
+
             // Remove invalid characters
             slug = System.Text.RegularExpressions.Regex.Replace(slug, "[^a-z0-9-]", "");
-            
+
             // Remove duplicate hyphens
             slug = System.Text.RegularExpressions.Regex.Replace(slug, "-{2,}", "-");
-            
+
             // Trim hyphens from start and end
             slug = slug.Trim('-');
 
@@ -219,6 +223,23 @@ namespace TechBlog.Infrastructure.Services
             }
 
             return uniqueName;
+        }
+        public async Task<IEnumerable<TagDto>> GetPopularTagsAsync(int count)
+        {
+            return await _context.Tags
+                .Where(t => !t.IsDeleted && t.BlogPostTags.Any(pt => pt.BlogPost != null && pt.BlogPost.IsPublished))
+                .OrderByDescending(t => t.BlogPostTags.Count(pt => pt.BlogPost != null && pt.BlogPost.IsPublished))
+                .Take(count)
+                .Select(t => new TagDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Slug = t.Slug,
+                    PostsCount = t.BlogPostTags.Count(pt => pt.BlogPost != null && pt.BlogPost.IsPublished),
+                    PostCount = t.BlogPostTags.Count(pt => pt.BlogPost != null && pt.BlogPost.IsPublished)
+                })
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }
