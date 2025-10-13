@@ -8,6 +8,7 @@ using TechBlog.Core.Interfaces;
 using TechBlog.Infrastructure.Data;
 using TechBlog.Infrastructure.Services;
 using TechBlog.Infrastructure.Mappings;
+using TechBlog.Core.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +53,8 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ILoggingService, LoggingService>();
+builder.Services.AddScoped<IRecaptchaService, RecaptchaService>();
+builder.Services.AddHttpClient(); // Required for RecaptchaService
 
 // Add WorkContext and related services
 builder.Services.AddHttpContextAccessor();

@@ -16,7 +16,7 @@
                     <p class="text-muted">Sign in to your TechBlog account</p>
                 </div>
 
-                <form id="account" method="post">
+                <form id="loginForm" method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
                     
                     <div class="form-floating mb-3">
@@ -38,7 +38,16 @@
                         </label>
                     </div>
                     
-                    <div class="d-grid mb-3">
+                    <!-- reCAPTCHA v2 -->
+                    @if (ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString()))
+                    {
+                        <div class="form-group mt-3 mb-3">
+                            <div class="g-recaptcha" data-sitekey="@ViewData["RecaptchaSiteKey"]"></div>
+                            <span class="text-danger field-validation-valid" data-valmsg-for="g-recaptcha-response" data-valmsg-replace="true"></span>
+                        </div>
+                    }
+
+                    <div class="d-grid">
                         <button id="login-submit" type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-sign-in-alt me-2"></i>Log in
                         </button>
@@ -61,4 +70,27 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    
+    @if (ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString()))
+    {
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('loginForm');
+                if (!form) return;
+
+                form.addEventListener('submit', function(e) {
+                    // If reCAPTCHA is not enabled, submit the form directly
+                    @if (!(ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString())))
+                    {
+                        @:return true;
+                    }
+                    
+                    // For reCAPTCHA v2, the widget handles the validation
+                    // Just let the form submit if we get here
+                    return true;
+                });
+            });
+        </script>
+    }
 }

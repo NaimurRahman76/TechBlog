@@ -48,22 +48,28 @@
                     </div>
                     
                     <div class="form-floating mb-3">
-                        <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+                        <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Confirm password" />
                         <label asp-for="Input.ConfirmPassword">Confirm Password</label>
                         <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
                     </div>
-                    
-                    <div class="d-grid mb-3">
-                        <button id="registerSubmit" type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-user-plus me-2"></i>Register
-                        </button>
-                    </div>
-                    
-                    <div class="text-center">
-                        <p class="mb-0">
-                            Already have an account? 
-                            <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-decoration-none fw-bold">Sign in</a>
-                        </p>
+
+                    <!-- reCAPTCHA v2 -->
+                    @if (ViewData["RecaptchaSiteKey"] != null)
+                    {
+                        <div class="form-group mb-3">
+                            <div class="g-recaptcha" data-sitekey="@ViewData["RecaptchaSiteKey"]"></div>
+                            <span class="text-danger field-validation-valid" data-valmsg-for="g-recaptcha-response" data-valmsg-replace="true"></span>
+                            <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response" />
+                        </div>
+                    }
+
+                    <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">
+                        <i class="fas fa-user-plus me-2"></i>Create Account
+                    </button>
+
+                    <div class="text-center mt-3">
+                        Already have an account? 
+                        <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-decoration-none fw-bold">Sign in</a>
                     </div>
                 </form>
             </div>
@@ -73,4 +79,30 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    
+    @if (ViewData["RecaptchaSiteKey"] != null)
+    {
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('registerForm');
+                if (!form) return;
+
+                form.addEventListener('submit', function(e) {
+                    // For reCAPTCHA v2, the form will be submitted normally
+                    // The reCAPTCHA widget will handle the validation
+                    const recaptchaResponse = grecaptcha.getResponse();
+                    if (!recaptchaResponse) {
+                        e.preventDefault();
+                        alert('Please complete the reCAPTCHA validation.');
+                        return false;
+                    }
+                    document.getElementById('g-recaptcha-response').value = recaptchaResponse;
+                    return true;
+                });
+            });
+                });
+            });
+        </script>
+    }
 }

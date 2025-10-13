@@ -9,6 +9,7 @@ using Moq;
 using TechBlog.Core.DTOs;
 using TechBlog.Core.Entities;
 using TechBlog.Core.Interfaces;
+using TechBlog.Core.Interfaces.Services;
 using TechBlog.Web.Controllers;
 using TechBlog.Web.Models;
 using Xunit;
@@ -24,6 +25,7 @@ namespace TechBlog.Tests.Unit.Controllers
         private readonly Mock<IWorkContext> _mockWorkContext;
         private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<ILogger<BlogController>> _mockLogger;
+        private readonly Mock<IRecaptchaService> _mockRecaptchaService;
         private readonly BlogController _controller;
 
         public BlogCategoriesTests()
@@ -35,6 +37,11 @@ namespace TechBlog.Tests.Unit.Controllers
             _mockWorkContext = new Mock<IWorkContext>();
             _mockMapper = new Mock<IMapper>();
             _mockLogger = new Mock<ILogger<BlogController>>();
+            _mockRecaptchaService = new Mock<IRecaptchaService>();
+            
+            // Setup default recaptcha verification to return true
+            _mockRecaptchaService.Setup(x => x.VerifyCaptchaAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(true);
 
             _controller = new BlogController(
                 _mockBlogService.Object,
@@ -43,7 +50,8 @@ namespace TechBlog.Tests.Unit.Controllers
                 _mockCommentService.Object,
                 _mockWorkContext.Object,
                 _mockMapper.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockRecaptchaService.Object);
         }
 
         [Fact]

@@ -8,26 +8,26 @@
         {
             var indentClass = level > 0 ? $"ms-{Math.Min(level * 3, 5)}" : string.Empty;
             var topLevelClass = level == 0 ? "top-level-comment" : string.Empty;
-<div class="comment-item border-bottom pb-3 mb-3 @indentClass @topLevelClass" data-comment-id="@comment.Id" data-author-name="@comment.AuthorName" data-depth="@level">
-    <div class="d-flex justify-content-between align-items-start">
-        <div class="d-flex">
-            <div class="me-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    @comment.AuthorName.Substring(0, 1).ToUpper()
+            <div class="comment-item border-bottom pb-3 mb-3 @indentClass @topLevelClass" data-comment-id="@comment.Id" data-author-name="@comment.AuthorName" data-depth="@level">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                @comment.AuthorName.Substring(0, 1).ToUpper()
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">@comment.AuthorName</h6>
+                            <small class="text-muted">@comment.CreatedAt.ToString("MMM dd, yyyy 'at' hh:mm tt")</small>
+                            <p class="mt-2 mb-0">@comment.Content</p>
+                            @if (level < maxDepth)
+                            {
+                                <button type="button" class="btn btn-link p-0 mt-1 comment-reply-btn">Reply</button>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div>
-                <h6 class="mb-1">@comment.AuthorName</h6>
-                <small class="text-muted">@comment.CreatedAt.ToString("MMM dd, yyyy 'at' hh:mm tt")</small>
-                <p class="mt-2 mb-0">@comment.Content</p>
-                @if (level < maxDepth)
-                {
-                    <button type="button" class="btn btn-link p-0 mt-1 comment-reply-btn">Reply</button>
-                }
-            </div>
-        </div>
-    </div>
-</div>
             if (comment.Replies != null && comment.Replies.Any())
             {
                 <div class="comment-replies" data-parent-id="@comment.Id">

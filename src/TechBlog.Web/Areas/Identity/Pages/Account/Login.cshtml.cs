@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -5,10 +6,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using TechBlog.Core.Entities;
+using TechBlog.Core.Interfaces.Services;
+using TechBlog.Web.Filters;
 
 namespace TechBlog.Web.Areas.Identity.Pages.Account
 {
@@ -18,18 +22,25 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly IRecaptchaService _recaptchaService;
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager, 
+        public LoginModel(
+            SignInManager<ApplicationUser> signInManager, 
             ILogger<LoginModel> logger,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IRecaptchaService recaptchaService)
         {
-            _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
+            _userManager = userManager;
+            _recaptchaService = recaptchaService;
         }
 
         [BindProperty]
-        public InputModel Input { get; set; } = new();
+        public InputModel Input { get; set; }
+        
+        [BindProperty]
+        public string RecaptchaResponse { get; set; }
 
         public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
 
@@ -66,43 +77,97 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
+            // Check if reCAPTCHA should be enabled for login
+            var recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+            bool recaptchaEnabled = recaptchaSettings?.IsEnabled == true && 
+                                 recaptchaSettings.EnableForLogin &&
+                                 !string.IsNullOrEmpty(recaptchaSettings.SiteKey) &&
+                                 !string.IsNullOrEmpty(recaptchaSettings.SecretKey);
+
+            if (recaptchaEnabled)
+            {
+                ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+            }
+
             ReturnUrl = returnUrl;
         }
 
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            // Get reCAPTCHA settings
+            var recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+            bool recaptchaEnabled = recaptchaSettings?.IsEnabled == true && 
+                                 recaptchaSettings.EnableForLogin &&
+                                 !string.IsNullOrEmpty(recaptchaSettings.SiteKey) &&
+                                 !string.IsNullOrEmpty(recaptchaSettings.SecretKey);
 
-            if (ModelState.IsValid)
+            // If reCAPTCHA is enabled, validate it
+            if (recaptchaEnabled)
             {
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-                if (result.Succeeded)
+                var recaptchaResponse = Request.Form["g-recaptcha-response"];
+                if (string.IsNullOrEmpty(recaptchaResponse))
                 {
-                    _logger.LogInformation("User logged in.");
-                    return LocalRedirect(returnUrl);
+                    ModelState.AddModelError(string.Empty, "Please complete the reCAPTCHA validation.");
+                    ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                    return Page();
                 }
-                if (result.RequiresTwoFactor)
+
+                try
                 {
-                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                    // Pass the action parameter as required by the interface
+                    // The service will handle the v2/v3 differences internally
+                    var isValid = await _recaptchaService.VerifyCaptchaAsync(recaptchaResponse, "login");
+                    if (!isValid)
+                    {
+                        _logger.LogWarning("reCAPTCHA validation failed for login attempt from {RemoteIpAddress}", 
+                            HttpContext.Connection.RemoteIpAddress?.ToString());
+                        ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
+                        ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                        return Page();
+                    }
                 }
-                if (result.IsLockedOut)
+                catch (Exception ex)
                 {
-                    _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    _logger.LogError(ex, "reCAPTCHA validation error");
+                    ModelState.AddModelError(string.Empty, "Error validating reCAPTCHA. Please try again.");
+                    ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
                     return Page();
                 }
             }
 
-            // If we got this far, something failed, redisplay form
-            return Page();
+            // Proceed with login
+            var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("User logged in.");
+                return LocalRedirect(returnUrl);
+            }
+            if (result.RequiresTwoFactor)
+            {
+                return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+            }
+            if (result.IsLockedOut)
+            {
+                _logger.LogWarning("User account locked out.");
+                return RedirectToPage("./Lockout");
+            }
+            else
+            {
+                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                
+                // If we got this far, something failed, redisplay form with reCAPTCHA key if needed
+                if (recaptchaEnabled)
+                {
+                    ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                }
+                
+                return Page();
+            }
         }
     }
 }

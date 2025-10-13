@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System;
 using TechBlog.Core.Entities;
 
 namespace TechBlog.Infrastructure.Data
@@ -18,6 +19,7 @@ namespace TechBlog.Infrastructure.Data
         public DbSet<BlogPostTag> BlogPostTags { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<LogEntry> LogEntries { get; set; }
+        public DbSet<RecaptchaSettings> RecaptchaSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -57,6 +59,21 @@ namespace TechBlog.Infrastructure.Data
                 .WithMany(bp => bp.Comments)
                 .HasForeignKey(c => c.BlogPostId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure RecaptchaSettings to have a single row
+            modelBuilder.Entity<RecaptchaSettings>()
+                .HasData(new RecaptchaSettings
+                {
+                    Id = 1,
+                    SiteKey = "",
+                    SecretKey = "",
+                    IsEnabled = false,
+                    EnableForLogin = false,
+                    EnableForRegistration = false,
+                    EnableForComments = false,
+                    ScoreThreshold = 0.5f,
+                    CreatedAt = DateTime.UtcNow
+                });
 
             modelBuilder.Entity<Comment>()
                 .HasOne(c => c.Author)
