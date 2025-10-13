@@ -239,6 +239,7 @@ namespace TechBlog.Web.Controllers
             }
         }
 
+        [HttpGet("blog/{slug}", Name = "BlogPost")]
         public async Task<IActionResult> Post(string slug)
         {
             if (string.IsNullOrEmpty(slug))
@@ -277,6 +278,7 @@ namespace TechBlog.Web.Controllers
             return View(model);
         }
 
+        [HttpGet("category/{slug}", Name = "BlogCategory")]
         public async Task<IActionResult> Category(string slug, int page = 1, int pageSize = 10)
         {
             if (string.IsNullOrEmpty(slug))

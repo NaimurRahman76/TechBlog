@@ -71,7 +71,7 @@
                                     <div class="card-body">
                                         <span class="badge bg-primary mb-2">@relatedPost.CategoryName</span>
                                         <h6 class="card-title">
-                                            <a asp-action="Details" asp-route-slug="@relatedPost.Slug" class="text-decoration-none">@relatedPost.Title</a>
+                                            <a href="/blog/@relatedPost.Slug" class="text-decoration-none">@relatedPost.Title</a>
                                         </h6>
                                         <p class="card-text small">@relatedPost.Summary</p>
                                         <small class="text-muted">

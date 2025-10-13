@@ -96,7 +96,7 @@
                                         </small>
                                     </div>
                                     <h5 class="card-title">
-                                        <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none">@post.Title</a>
+                                        <a href="/blog/@post.Slug" class="text-decoration-none">@post.Title</a>
                                     </h5>
                                     <p class="card-text">@post.Summary</p>
                                     <div class="d-flex justify-content-between align-items-center">
@@ -199,7 +199,7 @@
                             {
                                 <a asp-controller="Blog" 
                                    asp-action="Category" 
-                                   asp-route-category="@category.Slug" 
+                                   asp-route-slug="@category.Slug" 
                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                     @category.Name
                                     <span class="badge bg-primary rounded-pill">@category.PostsCount</span>

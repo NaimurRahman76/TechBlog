@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using TechBlog.Core.DTOs;
 using TechBlog.Core.Entities;
 
 namespace TechBlog.Core.Interfaces
@@ -16,5 +17,6 @@ namespace TechBlog.Core.Interfaces
         Task<bool> TagSlugExistsAsync(string slug, int? excludeId = null);
         Task<IEnumerable<Tag>> GetOrCreateTagsByNamesAsync(string[] tagNames);
         Task<int> GetTotalTagsCountAsync();
+        Task<IEnumerable<TagDto>> GetPopularTagsAsync(int count);
     }
 }

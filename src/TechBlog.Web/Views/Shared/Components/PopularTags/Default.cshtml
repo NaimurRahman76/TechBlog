@@ -1,0 +1,26 @@
+@using TechBlog.Core.DTOs
+@model IEnumerable<TagDto>
+
+@if (Model != null && Model.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="fas fa-tags me-2"></i>Popular Tags
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var tag in Model)
+                {
+                    <a asp-controller="Blog" 
+                       asp-action="Tag" 
+                       asp-route-slug="@tag.Slug" 
+                       class="btn btn-sm btn-outline-secondary mb-2">
+                        #@tag.Name
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}
