@@ -1,4 +1,4 @@
-@model TechBlog.Core.DTOs.CategoryDto
+@model TechBlog.Core.DTOs.CategoryDetailDto
 
 @{
     ViewData["Title"] = "Category Details";
@@ -48,9 +48,21 @@
 
                 <!-- Recent Posts in this Category -->
                 <div class="mt-4">
-                    <h5>Recent Posts in this Category</h5>
-                    @if (Model.PostsCount > 0)
+                    <h5>Recent Posts (@Model.RecentPosts.Count)</h5>
+                    @if (Model.RecentPosts.Any())
                     {
+                        <div class="list-group mb-3">
+                            @foreach (var post in Model.RecentPosts)
+                            {
+                                <a asp-controller="BlogPosts" asp-action="Details" asp-route-id="@post.Id" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@post.Title</h6>
+                                        <small class="text-muted">@post.CreatedAt.ToString("MMM d, yyyy")</small>
+                                    </div>
+                                    <small class="text-muted">@(post.IsPublished ? "Published" : "Draft")</small>
+                                </a>
+                            }
+                        </div>
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
                             This category contains <strong>@Model.PostsCount</strong> blog posts.
@@ -61,7 +73,7 @@
                     {
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            No posts have been assigned to this category yet.
+                            No posts found in this category.
                             <a asp-controller="BlogPosts" asp-action="Create" asp-route-categoryId="@Model.Id" class="alert-link">Create the first post</a>
                         </div>
                     }
@@ -75,6 +87,29 @@
         <div class="card shadow mb-4">
             <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-primary">Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Total Posts</span>
+                        <span class="font-weight-bold">@Model.PostsCount</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Created</span>
+                        <span class="font-weight-bold">@Model.CreatedAt.ToString("MMM d, yyyy")</span>
+                    </div>
+                </div>
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Last Updated</span>
+                            <span class="font-weight-bold">@Model.UpdatedAt.Value.ToString("MMM d, yyyy")</span>
+                        </div>
+                    </div>
+                }
             </div>
             <div class="card-body">
                 <div class="row text-center">

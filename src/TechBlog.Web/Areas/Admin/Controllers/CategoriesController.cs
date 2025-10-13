@@ -137,5 +137,39 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             
             return RedirectToAction(nameof(Index));
         }
+
+        public async Task<IActionResult> Details(int id)
+        {
+            var category = await _categoryService.GetCategoryByIdWithPostsAsync(id);
+            if (category == null)
+            {
+                return NotFound();
+            }
+
+            var model = new CategoryDetailDto
+            {
+                Id = category.Id,
+                Name = category.Name,
+                Description = category.Description,
+                Slug = category.Slug,
+                CreatedAt = category.CreatedAt,
+                UpdatedAt = category.UpdatedAt,
+                PostsCount = category.BlogPosts?.Count ?? 0,
+                RecentPosts = category.BlogPosts?
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(5)
+                    .Select(p => new PostListItemDto
+                    {
+                        Id = p.Id,
+                        Title = p.Title,
+                        Slug = p.Slug,
+                        CreatedAt = p.CreatedAt,
+                        IsPublished = p.IsPublished
+                    })
+                    .ToList() ?? new List<PostListItemDto>()
+            };
+                
+            return View(model);
+        }
     }
 }

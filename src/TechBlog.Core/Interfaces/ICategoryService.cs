@@ -15,5 +15,6 @@ namespace TechBlog.Core.Interfaces
         Task<bool> CategoryExistsAsync(int id);
         Task<bool> CategorySlugExistsAsync(string slug, int? excludeId = null);
         Task<int> GetTotalCategoriesCountAsync();
+        Task<Category> GetCategoryByIdWithPostsAsync(int id, bool includeUnpublished = false);
     }
 }

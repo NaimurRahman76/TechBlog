@@ -140,5 +140,17 @@ namespace TechBlog.Web.Areas.Admin.Controllers
             
             return RedirectToAction(nameof(Index));
         }
+
+        public async Task<IActionResult> Details(int id)
+        {
+            var tag = await _tagService.GetTagByIdAsync(id);
+            if (tag == null)
+            {
+                return NotFound();
+            }
+
+            var model = _mapper.Map<TagDto>(tag);
+            return View(model);
+        }
     }
 }

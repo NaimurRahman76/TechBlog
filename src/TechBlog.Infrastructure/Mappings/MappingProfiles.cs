@@ -11,8 +11,8 @@ namespace TechBlog.Infrastructure.Mappings
         {
             // Category mappings
             CreateMap<Category, CategoryDto>()
-                .ForMember(dest => dest.PostCount, opt => 
-                    opt.MapFrom(src => src.BlogPosts.Count));
+                .ForMember(dest => dest.PostsCount, opt => 
+                    opt.MapFrom(src => src.BlogPosts.Count(bp => !bp.IsDeleted)));
 
             CreateMap<Category, CategoryDetailDto>()
                 .IncludeBase<Category, CategoryDto>();

@@ -15,6 +15,7 @@ using TechBlog.Web.Areas.Admin.Controllers;
 using TechBlog.Web.Areas.Admin.Models;
 using AutoMapper;
 using Xunit;
+using Microsoft.AspNetCore.Hosting;
 
 namespace TechBlog.Tests.Unit.Controllers
 {
@@ -90,7 +91,6 @@ namespace TechBlog.Tests.Unit.Controllers
                 new BlogPost { Id = 3, Title = "Post 3", Content = "Content 3", IsPublished = false, CreatedAt = DateTime.UtcNow }
             };
 
-            var pagedList = new PagedList<BlogPost>(posts, 3, 1, 10);
             var postDtos = new List<PostAdminListDto>
             {
                 new PostAdminListDto { Id = 1, Title = "Post 1", IsPublished = true },
@@ -100,7 +100,7 @@ namespace TechBlog.Tests.Unit.Controllers
 
             _blogServiceMock.Setup(s => s.GetAllPostsAsync(true))
                            .ReturnsAsync(posts.AsQueryable());
-            _mapperMock.Setup(m => m.Map<IEnumerable<PostAdminListDto>>(It.IsAny<IEnumerable<BlogPost>>()))
+            _mapperMock.Setup(m => m.Map<IEnumerable<PostAdminListDto>>(It.IsAny<IEnumerable<BlogPost>>() ))
                       .Returns(postDtos);
 
             // Act
@@ -133,7 +133,7 @@ namespace TechBlog.Tests.Unit.Controllers
             var result = await _controller.Index(1, "JavaScript", null, 10);
 
             // Assert
-            var viewResult = Assert.IsType<ViewResult>(viewResult.Model);
+            var viewResult = Assert.IsType<ViewResult>(result);
             _blogServiceMock.Verify(s => s.GetAllPostsAsync(true), Times.Once);
         }
 
@@ -331,6 +331,79 @@ namespace TechBlog.Tests.Unit.Controllers
             var redirectResult = Assert.IsType<RedirectToActionResult>(result);
             Assert.Equal("Index", redirectResult.ActionName);
             _blogServiceMock.Verify(s => s.DeletePostAsync(1), Times.Once);
+        }
+
+        [Fact]
+        public async Task Details_WithValidId_ShouldReturnViewWithPost()
+        {
+            // Arrange
+            var post = new BlogPost
+            {
+                Id = 1,
+                Title = "Test Post",
+                Content = "Test Content",
+                Summary = "Test Summary",
+                Slug = "test-post",
+                IsPublished = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var postDto = new PostDetailDto
+            {
+                Id = 1,
+                Title = "Test Post",
+                Content = "Test Content",
+                Summary = "Test Summary",
+                Slug = "test-post",
+                IsPublished = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _blogServiceMock.Setup(s => s.GetPostByIdAsync(1))
+                           .ReturnsAsync(post);
+            _mapperMock.Setup(m => m.Map<PostDetailDto>(post))
+                      .Returns(postDto);
+
+            // Act
+            var result = await _controller.Details(1);
+
+            // Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            var model = Assert.IsType<PostDetailDto>(viewResult.Model);
+            Assert.Equal(1, model.Id);
+            Assert.Equal("Test Post", model.Title);
+            Assert.True(model.IsPublished);
+            _blogServiceMock.Verify(s => s.GetPostByIdAsync(1), Times.Once);
+        }
+
+        [Fact]
+        public async Task Details_WithInvalidId_ShouldReturnNotFound()
+        {
+            // Arrange
+            _blogServiceMock.Setup(s => s.GetPostByIdAsync(999))
+                           .ReturnsAsync((BlogPost)null);
+
+            // Act
+            var result = await _controller.Details(999);
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
+            _blogServiceMock.Verify(s => s.GetPostByIdAsync(999), Times.Once);
+        }
+
+        [Fact]
+        public async Task Details_WithZeroId_ShouldReturnNotFound()
+        {
+            // Arrange
+            _blogServiceMock.Setup(s => s.GetPostByIdAsync(0))
+                           .ReturnsAsync((BlogPost)null);
+
+            // Act
+            var result = await _controller.Details(0);
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
+            _blogServiceMock.Verify(s => s.GetPostByIdAsync(0), Times.Once);
         }
     }
 }
