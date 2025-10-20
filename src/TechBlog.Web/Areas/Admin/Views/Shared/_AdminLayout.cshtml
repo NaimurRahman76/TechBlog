@@ -75,6 +75,11 @@
                             <i class="fas fa-shield-alt me-2"></i> reCAPTCHA
                         </a>
                     </li>
+                    <li>
+                        <a asp-area="Admin" asp-controller="EmailSettings" asp-action="Index" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "EmailSettings" ? "active" : "")">
+                            <i class="fas fa-envelope me-2"></i> Email Settings
+                        </a>
+                    </li>
                     <li class="mt-4">
                         <a href="/" class="nav-link text-white">
                             <i class="fas fa-arrow-left me-2"></i> Back to Site

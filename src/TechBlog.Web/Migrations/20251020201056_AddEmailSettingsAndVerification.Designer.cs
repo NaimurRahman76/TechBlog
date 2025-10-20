@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TechBlog.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using TechBlog.Infrastructure.Data;
 namespace TechBlog.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251020201056_AddEmailSettingsAndVerification")]
+    partial class AddEmailSettingsAndVerification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -462,9 +465,6 @@ namespace TechBlog.Web.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("PasswordResetLinkExpirationHours")
-                        .HasColumnType("int");
-
                     b.Property<string>("SmtpHost")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -492,14 +492,13 @@ namespace TechBlog.Web.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 10, 20, 20, 40, 42, 991, DateTimeKind.Utc).AddTicks(1933),
+                            CreatedAt = new DateTime(2025, 10, 20, 20, 10, 56, 260, DateTimeKind.Utc).AddTicks(5874),
                             EnableEmailVerification = true,
                             EnableSsl = true,
                             FromEmail = "noreply@techblog.com",
                             FromName = "TechBlog",
                             IsEnabled = false,
                             Password = "",
-                            PasswordResetLinkExpirationHours = 1,
                             SmtpHost = "smtp.gmail.com",
                             SmtpPort = 587,
                             Username = "",
@@ -609,7 +608,7 @@ namespace TechBlog.Web.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 10, 20, 20, 40, 42, 991, DateTimeKind.Utc).AddTicks(1821),
+                            CreatedAt = new DateTime(2025, 10, 20, 20, 10, 56, 260, DateTimeKind.Utc).AddTicks(5766),
                             EnableForComments = false,
                             EnableForLogin = false,
                             EnableForRegistration = false,

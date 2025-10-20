@@ -27,12 +27,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = false;
+    options.SignIn.RequireConfirmedAccount = true; // Require email confirmation
+    options.SignIn.RequireConfirmedEmail = true;
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 8;
+    
+    // Token lifespan for email confirmation
+    options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
@@ -54,6 +58,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ILoggingService, LoggingService>();
 builder.Services.AddScoped<IRecaptchaService, RecaptchaService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient(); // Required for RecaptchaService
 
 // Add WorkContext and related services

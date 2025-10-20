@@ -92,23 +92,37 @@ ASP.NET Core MVC web application with admin and public areas.
    - Role-based access control
    - User registration and authentication
    - Profile management
+   - Email verification system
+   - Resend verification links
 
 4. **Comment System**
    - Nested comments
    - Moderation
    - User notifications
 
+5. **Email System**
+   - SMTP email configuration
+   - Email verification for new users
+   - Password reset via email
+   - Customizable email templates
+   - Test email functionality
+   - Admin panel for email settings
+   - Configurable link expiration
+
 ## Configuration
 - Database connection strings in `appsettings.json`
 - File upload settings (path, allowed extensions, max size)
-- Email settings for notifications
+- Email settings for notifications (configured via Admin panel)
+- reCAPTCHA settings (configured via Admin panel)
 
 ## Getting Started
 1. Clone the repository
 2. Update connection strings in `appsettings.json`
-3. Run database migrations
-4. Seed initial data
-5. Run the application
+3. Run database migrations: `dotnet ef database update --project src/TechBlog.Web`
+4. Seed initial data (automatic on first run)
+5. Run the application: `dotnet run --project src/TechBlog.Web`
+6. Configure email settings in Admin panel (Admin > Email Settings)
+7. Test email configuration before enabling verification
 
 ## API Endpoints
 - `/api/posts`: Blog post operations
@@ -121,7 +135,10 @@ ASP.NET Core MVC web application with admin and public areas.
 - Anti-forgery tokens
 - Role-based authorization
 - Secure file upload handling
-- Password hashing
+- Password hashing with ASP.NET Core Identity
+- Email verification for new accounts
+- reCAPTCHA protection on forms
+- SMTP password encryption (recommend using environment variables in production)
 
 ## Deployment
 - Can be deployed to any Windows/Linux server with .NET 6.0 runtime
@@ -132,13 +149,25 @@ ASP.NET Core MVC web application with admin and public areas.
 - AutoMapper for object mapping
 - FluentValidation for model validation
 - X.PagedList for pagination
-- SendGrid for email notifications
+- SMTP for email notifications (configurable)
 - ImageSharp for image processing
+- ASP.NET Core Identity for authentication
+- Entity Framework Core for data access
+- xUnit for testing
 
 ## Known Issues
 - Image upload path handling in development vs production
-- Comment notification emails in development
 - Performance optimizations needed for large datasets
+
+## Recent Updates
+- ✅ Email verification system implemented
+- ✅ Password reset (forgot password) feature implemented
+- ✅ Admin email configuration panel added
+- ✅ Resend verification link functionality
+- ✅ Professional HTML email templates
+- ✅ Comprehensive unit and integration tests (41 tests total)
+- ✅ Email service with SMTP support
+- ✅ Secure token-based password reset
 
 ## Future Enhancements
 - Full-text search
