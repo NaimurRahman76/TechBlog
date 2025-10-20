@@ -24,9 +24,9 @@ namespace TechBlog.Tests.Unit.Extensions
             Assert.Equal(pageSize, result.PageSize);
             Assert.Equal(5, result.TotalCount);
             Assert.Equal(3, result.TotalPages);
-            Assert.Equal(2, result.Count);
-            Assert.Equal("Item1", result[0]);
-            Assert.Equal("Item2", result[1]);
+            Assert.Equal(2, result.TotalCount);
+            Assert.Equal("Item1", result.FirstOrDefault());
+            Assert.Equal("Item2", result.FirstOrDefault());
             Assert.True(result.HasPreviousPage);
             Assert.False(result.HasNextPage);
         }
@@ -47,9 +47,9 @@ namespace TechBlog.Tests.Unit.Extensions
             Assert.Equal(pageSize, result.PageSize);
             Assert.Equal(5, result.TotalCount);
             Assert.Equal(3, result.TotalPages);
-            Assert.Equal(2, result.Count);
-            Assert.Equal("Item3", result[0]);
-            Assert.Equal("Item4", result[1]);
+            Assert.Equal(2, result.TotalCount);
+            Assert.Equal("Item3", result.FirstOrDefault());
+            Assert.Equal("Item4", result.FirstOrDefault());
             Assert.True(result.HasPreviousPage);
             Assert.True(result.HasNextPage);
         }
@@ -70,7 +70,7 @@ namespace TechBlog.Tests.Unit.Extensions
             Assert.Equal(pageSize, result.PageSize);
             Assert.Equal(3, result.TotalCount);
             Assert.Equal(2, result.TotalPages);
-            Assert.Equal(2, result.Count);
+            Assert.Equal(2, result.TotalCount);
         }
 
         [Fact]
@@ -89,7 +89,7 @@ namespace TechBlog.Tests.Unit.Extensions
             Assert.Equal(pageSize, result.PageSize);
             Assert.Equal(0, result.TotalCount);
             Assert.Equal(0, result.TotalPages);
-            Assert.Equal(0, result.Count);
+            Assert.Equal(0, result.TotalCount);
             Assert.False(result.HasPreviousPage);
             Assert.False(result.HasNextPage);
         }
@@ -110,8 +110,8 @@ namespace TechBlog.Tests.Unit.Extensions
             Assert.Equal(pageSize, result.PageSize);
             Assert.Equal(5, result.TotalCount);
             Assert.Equal(3, result.TotalPages);
-            Assert.Equal(1, result.Count);
-            Assert.Equal("Item5", result[0]);
+            Assert.Equal(1, result.TotalCount);
+            Assert.Equal("Item5", result.FirstOrDefault());
             Assert.True(result.HasPreviousPage);
             Assert.False(result.HasNextPage);
         }

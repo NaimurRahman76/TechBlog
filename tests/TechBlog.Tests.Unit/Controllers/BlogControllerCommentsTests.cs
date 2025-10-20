@@ -9,6 +9,7 @@ using Moq;
 using TechBlog.Core.DTOs;
 using TechBlog.Core.Entities;
 using TechBlog.Core.Interfaces;
+using TechBlog.Core.Interfaces.Services;
 using TechBlog.Web.Controllers;
 using Xunit;
 
@@ -18,13 +19,19 @@ namespace TechBlog.Tests.Unit.Controllers
     {
         private static BlogController CreateController(
             Mock<ICommentService> commentService,
-            Mock<IWorkContext> workContext)
+            Mock<IWorkContext> workContext,
+            Mock<IRecaptchaService> recaptchaService = null)
         {
             var blogSvc = new Mock<IBlogService>();
             var catSvc = new Mock<ICategoryService>();
             var tagSvc = new Mock<ITagService>();
             var mapper = new Mock<AutoMapper.IMapper>();
             var logger = new Mock<ILogger<BlogController>>();
+            
+            // Use provided recaptcha service or create a default one
+            var mockRecaptcha = recaptchaService ?? new Mock<IRecaptchaService>();
+            mockRecaptcha.Setup(x => x.VerifyCaptchaAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(true);
 
             return new BlogController(
                 blogSvc.Object,
@@ -33,7 +40,8 @@ namespace TechBlog.Tests.Unit.Controllers
                 commentService.Object,
                 workContext.Object,
                 mapper.Object,
-                logger.Object);
+                logger.Object,
+                mockRecaptcha.Object);
         }
 
         private static List<Comment> MakeComments(int postId, int topLevelCount, int repliesPerTop, int unapprovedEvery = 0)

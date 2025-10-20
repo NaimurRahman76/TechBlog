@@ -177,7 +177,7 @@
                         <i class="fas fa-folder me-2"></i>Categories
                     </h5>
                     @{
-                        var categoryCount = Model.Categories?.Count() ?? 0;
+                        var categoryCount = Model.Categories.Count();
                         var hasCategories = categoryCount > 0;
                         var showViewAll = categoryCount > 6;
                     }

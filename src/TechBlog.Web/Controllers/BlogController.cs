@@ -9,6 +9,8 @@ using TechBlog.Core.DTOs;
 using TechBlog.Core.Entities;
 using TechBlog.Core.Exceptions;
 using TechBlog.Core.Interfaces;
+using TechBlog.Core.Interfaces.Services;
+using TechBlog.Web.Filters;
 using TechBlog.Web.Models;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +26,7 @@ namespace TechBlog.Web.Controllers
         private readonly IWorkContext _workContext;
         private readonly IMapper _mapper;
         private readonly ILogger<BlogController> _logger;
+        private readonly IRecaptchaService _recaptchaService;
 
         public BlogController(
             IBlogService blogService,
@@ -32,7 +35,8 @@ namespace TechBlog.Web.Controllers
             ICommentService commentService,
             IWorkContext workContext,
             IMapper mapper,
-            ILogger<BlogController> logger)
+            ILogger<BlogController> logger,
+            IRecaptchaService recaptchaService)
         {
             _blogService = blogService ?? throw new ArgumentNullException(nameof(blogService));
             _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
@@ -41,9 +45,10 @@ namespace TechBlog.Web.Controllers
             _workContext = workContext ?? throw new ArgumentNullException(nameof(workContext));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _recaptchaService = recaptchaService ?? throw new ArgumentNullException(nameof(recaptchaService));
         }
 
-        [HttpGet]
+        [HttpGet("Blog/CommentsPartial")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> CommentsPartial(int postId, int page = 1, int pageSize = 5, int replyPreviewSize = 5)
         {
@@ -67,7 +72,7 @@ namespace TechBlog.Web.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpGet("Blog/RepliesPartial")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> RepliesPartial(int postId, int parentCommentId, int baseLevel = 1, int page = 1, int pageSize = 5)
         {
@@ -134,6 +139,9 @@ namespace TechBlog.Web.Controllers
                 commentsToShow = approved;
             }
 
+            foreach (var c in commentsToShow)
+                c.Replies = null;
+
             // Build a threaded tree so replies render under their parents
             var byId = commentsToShow.ToDictionary(c => c.Id);
             var roots = new List<Comment>();
@@ -168,14 +176,12 @@ namespace TechBlog.Web.Controllers
                         BlogPostId = n.BlogPostId,
                         CreatedAt = n.CreatedAt,
                         UpdatedAt = n.UpdatedAt,
-                        ReplyCount = totalReplies
+                        ReplyCount = totalReplies,
+                        Replies = n.Replies != null? MapTree(replyPreviewSize.HasValue
+                                ? n.Replies.OrderByDescending(r => r.CreatedAt).Take(replyPreviewSize.Value)
+                                : n.Replies.OrderByDescending(r => r.CreatedAt)).ToList() : new List<CommentDto>()
                     };
-                    if (n.Replies != null && n.Replies.Any())
-                    {
-                        var ordered = n.Replies.OrderByDescending(r => r.CreatedAt);
-                        var limited = replyPreviewSize.HasValue ? ordered.Take(replyPreviewSize.Value) : ordered;
-                        dto.Replies = MapTree(limited).ToList();
-                    }
+                    
                     yield return dto;
                 }
             }
@@ -264,6 +270,34 @@ namespace TechBlog.Web.Controllers
                 RelatedPosts = _mapper.Map<IEnumerable<PostListDto>>(relatedPosts)
             };
 
+            // Add reCAPTCHA settings to ViewData
+            try
+            {
+                var recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+                _logger.LogInformation("reCAPTCHA Settings - IsEnabled: {IsEnabled}, EnableForComments: {EnableForComments}, SiteKey: {SiteKey}", 
+                    recaptchaSettings?.IsEnabled, recaptchaSettings?.EnableForComments, recaptchaSettings?.SiteKey);
+
+                if (recaptchaSettings?.IsEnabled == true && recaptchaSettings.EnableForComments && !string.IsNullOrEmpty(recaptchaSettings.SiteKey))
+                {
+                    ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                    ViewData["RecaptchaEnabled"] = true;
+                    _logger.LogInformation("reCAPTCHA enabled for comments with site key: {SiteKey}", recaptchaSettings.SiteKey);
+                }
+                else
+                {
+                    ViewData["RecaptchaSiteKey"] = null;
+                    ViewData["RecaptchaEnabled"] = false;
+                    _logger.LogWarning("reCAPTCHA not enabled or missing site key. IsEnabled: {IsEnabled}, EnableForComments: {EnableForComments}, HasSiteKey: {HasSiteKey}",
+                        recaptchaSettings?.IsEnabled, recaptchaSettings?.EnableForComments, !string.IsNullOrEmpty(recaptchaSettings?.SiteKey));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading reCAPTCHA settings");
+                ViewData["RecaptchaSiteKey"] = null;
+                ViewData["RecaptchaEnabled"] = false;
+            }
+
             // Load comments
             try
             {
@@ -341,26 +375,52 @@ namespace TechBlog.Web.Controllers
         {
             try
             {
-                if (model == null)
-                {
-                    return BadRequest(new { success = false, message = "Invalid request data." });
-                }
-
                 if (!ModelState.IsValid)
                 {
                     var errors = ModelState.Values
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage)
                         .ToList();
-
                     return BadRequest(new { success = false, message = "Validation failed.", errors });
                 }
 
+                // Check if post exists
                 var post = await _blogService.GetPostByIdAsync(model.PostId);
                 if (post == null)
                 {
                     _logger.LogWarning("Post with ID {PostId} not found when adding comment", model.PostId);
                     return NotFound(new { success = false, message = "Post not found." });
+                }
+
+                // Check reCAPTCHA if enabled
+                var recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+                bool recaptchaEnabled = recaptchaSettings?.IsEnabled == true &&
+                                     recaptchaSettings.EnableForComments &&
+                                     !string.IsNullOrEmpty(recaptchaSettings.SiteKey) &&
+                                     !string.IsNullOrEmpty(recaptchaSettings.SecretKey);
+
+                if (recaptchaEnabled)
+                {
+                    var recaptchaResponse = Request.Form["g-recaptcha-response"];
+                    if (string.IsNullOrEmpty(recaptchaResponse))
+                    {
+                        return Json(new { success = false, message = "Please complete the reCAPTCHA validation." });
+                    }
+
+                    try
+                    {
+                        var isValid = await _recaptchaService.VerifyCaptchaAsync(recaptchaResponse, "comment");
+                        if (!isValid)
+                        {
+                            _logger.LogWarning("reCAPTCHA validation failed for comment submission from {Email}", model.AuthorEmail);
+                            return Json(new { success = false, message = "reCAPTCHA validation failed. Please try again." });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error validating reCAPTCHA for comment submission");
+                        return Json(new { success = false, message = "Error validating reCAPTCHA. Please try again." });
+                    }
                 }
 
                 var comment = new Comment

@@ -70,6 +70,11 @@
                             <i class="fas fa-broom me-2"></i> Utilities
                         </a>
                     </li>
+                    <li>
+                        <a asp-area="Admin" asp-controller="RecaptchaSettings" asp-action="Index" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "RecaptchaSettings" ? "active" : "")">
+                            <i class="fas fa-shield-alt me-2"></i> reCAPTCHA
+                        </a>
+                    </li>
                     <li class="mt-4">
                         <a href="/" class="nav-link text-white">
                             <i class="fas fa-arrow-left me-2"></i> Back to Site

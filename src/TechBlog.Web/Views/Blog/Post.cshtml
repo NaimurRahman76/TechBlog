@@ -52,7 +52,7 @@
                         <div class="comments-container">
                             @foreach (var comment in Model.Post.Comments)
                             {
-                                <div class="card mb-3">
+                                    <div class="card mb-3">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <h5 class="card-title mb-0">@comment.AuthorName</h5>
@@ -77,6 +77,12 @@
                                                 }
                                             </div>
                                         }
+                                        
+                                        <button class="btn btn-sm btn-link text-muted p-0 mt-2 reply-button" 
+                                                data-comment-id="@comment.Id" 
+                                                data-comment-author="@comment.AuthorName">
+                                            <i class="fas fa-reply me-1"></i>Reply
+                                        </button>
                                     </div>
                                 </div>
                             }
@@ -91,28 +97,58 @@
                     <div class="card mt-4">
                         <div class="card-body">
                             <h4 class="card-title mb-4">Leave a Comment</h4>
-                            <form id="commentForm" asp-controller="Blog" asp-action="AddComment" method="post">
-                                <input type="hidden" name="postId" value="@Model.Post.Id" />
-                                <div class="mb-3">
-                                    <label for="authorName" class="form-label">Name</label>
-                                    <input type="text" class="form-control" id="authorName" name="authorName" required>
+                            <form id="commentForm" asp-controller="Blog" asp-action="AddComment" method="post" data-recaptcha>
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="PostId" value="@Model.Post.Id" />
+                                <input type="hidden" name="ParentCommentId" id="parentCommentId" value="" />
+                                <div id="replyingTo" class="alert alert-info d-none">
+                                    Replying to: <span id="replyingToName"></span>
+                                    <button type="button" id="cancelReply" class="btn-close float-end" aria-label="Cancel reply"></button>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="authorEmail" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="authorEmail" name="authorEmail" required>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="authorName" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="authorName" name="AuthorName" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="authorEmail" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="authorEmail" name="AuthorEmail" required>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label for="content" class="form-label">Comment</label>
-                                    <textarea class="form-control" id="content" name="content" rows="3" required></textarea>
+                                    <textarea class="form-control" id="content" name="Content" rows="4" required></textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary">Submit Comment</button>
+                                @{
+                                    var recaptchaSiteKey = ViewData["RecaptchaSiteKey"]?.ToString();
+                                    var recaptchaEnabled = ViewData["RecaptchaEnabled"] as bool? ?? false;
+                                    
+                                    if (!string.IsNullOrEmpty(recaptchaSiteKey) && recaptchaEnabled)
+                                    {
+                                        <div class="form-group mt-3 mb-3">
+                                            <div id="recaptcha-container">
+                                                <div class="g-recaptcha" data-sitekey="@recaptchaSiteKey" data-callback="onRecaptchaSuccess" data-expired-callback="onRecaptchaExpired" data-error-callback="onRecaptchaError"></div>
+                                                <div class="form-text small text-muted mt-1">Please complete the reCAPTCHA to submit your comment.</div>
+                                                <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response" />
+                                            </div>
+                                            <span class="text-danger field-validation-valid" data-valmsg-for="g-recaptcha-response" data-valmsg-replace="true"></span>
+                                        </div>
+                                    }
+                                }
+                                <button type="submit" class="btn btn-primary" id="submitComment">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                    <i class="fas fa-paper-plane me-2"></i>Submit Comment
+                                </button>
+                                <div id="commentError" class="alert alert-danger mt-2 d-none" role="alert"></div>
+                                <div id="commentSuccess" class="alert alert-success mt-2 d-none" role="alert">
+                                    Comment submitted successfully! It will be visible after moderation.
+                                </div>
                             </form>
                         </div>
                     </div>
-                </div>
             </article>
         </div>
-
+        
         <!-- Sidebar -->
         <div class="col-lg-4">
             <!-- Related Posts -->
@@ -147,37 +183,169 @@
 </div>
 
 @section Scripts {
+    @if (ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString()))
+    {
+        <script>
+            var recaptchaWidgetId;
+            var recaptchaRendered = false;
+            // This function will be called when reCAPTCHA loads
+            function onRecaptchaLoad() {
+                console.log('reCAPTCHA API loaded');
+                
+                // Prevent multiple renders
+                if (recaptchaRendered) {
+                    console.log('reCAPTCHA already rendered, skipping');
+                    return;
+                }
+                
+                var recaptchaContainer = document.querySelector('.g-recaptcha');
+                if (recaptchaContainer) {
+                    // Check if container already has a widget
+                    if (recaptchaContainer.hasChildNodes() && recaptchaContainer.children.length > 0) {
+                        console.log('reCAPTCHA container already has content, skipping render');
+                        recaptchaRendered = true;
+                        return;
+                    }
+                    
+                    try {
+                        recaptchaWidgetId = grecaptcha.render(recaptchaContainer, {
+                            'sitekey': recaptchaContainer.getAttribute('data-sitekey'),
+                            'callback': onRecaptchaSuccess,
+                            'expired-callback': onRecaptchaExpired,
+                            'error-callback': onRecaptchaError
+                        });
+                        recaptchaRendered = true;
+                        console.log('reCAPTCHA widget rendered with ID:', recaptchaWidgetId);
+                    } catch (error) {
+                        console.error('Error rendering reCAPTCHA:', error);
+                    }
+                }
+            }
+        </script>
+        <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+    }
+    
     <script>
-        document.getElementById('commentForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('commentForm');
+            if (!form) return;
             
-            const form = e.target;
-            const formData = new FormData(form);
+            const submitButton = form.querySelector('button[type="submit"]');
+            const spinner = submitButton.querySelector('.spinner-border');
+            const commentError = document.getElementById('commentError');
+            const commentSuccess = document.getElementById('commentSuccess');
             
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            // Handle reply button clicks
+            document.querySelectorAll('.reply-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.dataset.commentId;
+                    const commentAuthor = this.dataset.commentAuthor;
+                    document.getElementById('parentCommentId').value = commentId;
+                    document.getElementById('replyingTo').classList.remove('d-none');
+                    document.getElementById('replyingToName').textContent = commentAuthor;
+                    // Scroll to comment form
+                    form.scrollIntoView({ behavior: 'smooth' });
+                    document.getElementById('content').focus();
+                });
+            });
+            
+            // Handle cancel reply
+            document.getElementById('cancelReply')?.addEventListener('click', function() {
+                document.getElementById('parentCommentId').value = '';
+                document.getElementById('replyingTo').classList.add('d-none');
+            });
+            
+            // reCAPTCHA callback functions
+            window.onRecaptchaSuccess = function(token) {
+                console.log('reCAPTCHA verified');
+                document.getElementById('g-recaptcha-response').value = token;
+            };
+            
+            window.onRecaptchaExpired = function() {
+                console.log('reCAPTCHA expired');
+                document.getElementById('g-recaptcha-response').value = '';
+            };
+            
+            window.onRecaptchaError = function() {
+                console.error('reCAPTCHA error');
+                document.getElementById('g-recaptcha-response').value = '';
+            };
+            
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Reset messages
+                commentError.classList.add('d-none');
+                commentSuccess.classList.add('d-none');
+                
+                // Check if reCAPTCHA is completed
+                const recaptchaSiteKey = '@(ViewData["RecaptchaSiteKey"]?.ToString() ?? "")';
+                if (recaptchaSiteKey) {
+                    const recaptchaResponse = document.getElementById('g-recaptcha-response').value;
+                    if (!recaptchaResponse) {
+                        commentError.textContent = 'Please complete the reCAPTCHA verification.';
+                        commentError.classList.remove('d-none');
+                        // Scroll to reCAPTCHA
+                        document.querySelector('.g-recaptcha').scrollIntoView({ behavior: 'smooth' });
+                        return;
+                    }
                 }
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
+                
+                // Disable submit button and show loading state
+                submitButton.disabled = true;
+                spinner.classList.remove('d-none');
+                
+                try {
+                    
+                    // Submit the form via fetch API
+                    const formData = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Show success message
+                        commentSuccess.classList.remove('d-none');
+                        // Reset form
+                        form.reset();
+                        // Reset reply state
+                        document.getElementById('parentCommentId').value = '';
+                        document.getElementById('replyingTo').classList.add('d-none');
+                        // Reset reCAPTCHA if it exists
+                        if (typeof grecaptcha !== 'undefined' && typeof recaptchaWidgetId !== 'undefined' && recaptchaWidgetId !== null) {
+                            try {
+                                grecaptcha.reset(recaptchaWidgetId);
+                                document.getElementById('g-recaptcha-response').value = '';
+                            } catch (error) {
+                                console.error('Error resetting reCAPTCHA:', error);
+                            }
+                        }
+                        // Reload the page to show the new comment
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        // Show error message
+                        commentError.textContent = result.message || 'An error occurred while submitting your comment.';
+                        commentError.classList.remove('d-none');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    commentError.textContent = 'An error occurred while posting your comment. Please try again.';
+                    commentError.classList.remove('d-none');
+                } finally {
+                    // Re-enable submit button and hide spinner
+                    submitButton.disabled = false;
+                    spinner.classList.add('d-none');
                 }
-                throw new Error('Network response was not ok.');
-            })
-            .then(data => {
-                if (data.success) {
-                    // Reload the page to show the new comment
-                    window.location.reload();
-                } else {
-                    alert('Failed to post comment: ' + (data.message || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while posting your comment. Please try again.');
             });
         });
     </script>

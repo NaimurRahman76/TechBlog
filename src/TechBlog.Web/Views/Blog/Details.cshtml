@@ -185,6 +185,33 @@
                                 <textarea class="form-control" name="Content" id="commentContent" rows="4" placeholder="Write your comment..." required></textarea>
                                 <div class="invalid-feedback">Please enter your comment.</div>
                             </div>
+                            <!-- reCAPTCHA v2 -->
+                            @{
+                                var recaptchaSiteKey = ViewData["RecaptchaSiteKey"]?.ToString();
+                                var recaptchaEnabled = ViewData["RecaptchaEnabled"] as bool? ?? false;
+                                
+                                if (!string.IsNullOrEmpty(recaptchaSiteKey) && recaptchaEnabled)
+                                {
+                                    <div class="mb-3">
+                                        <div class="form-group">
+                                            <div class="g-recaptcha" data-sitekey="@recaptchaSiteKey" data-callback="onRecaptchaSuccess" data-expired-callback="onRecaptchaExpired" data-error-callback="onRecaptchaError"></div>
+                                            <div class="form-text small text-muted mt-1">Please complete the reCAPTCHA to submit your comment.</div>
+                                            <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        reCAPTCHA is not properly configured. Please contact the site administrator.
+                                    </div>
+                                    <script>
+                                        console.warn('reCAPTCHA not properly configured. SiteKey: @(recaptchaSiteKey ?? "null"), Enabled: @recaptchaEnabled');
+                                    </script>
+                                }
+                            }
+                            
                             <button type="submit" class="btn btn-primary" id="submitComment">
                                 <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                 <i class="fas fa-paper-plane me-2"></i>Post Comment
@@ -211,11 +238,164 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery-ajax-unobtrusive@3.2.6/dist/jquery.unobtrusive-ajax.min.js"></script>
+    
+    @if (ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString()))
+    {
+        <script>
+            // reCAPTCHA callback functions
+            function onRecaptchaSuccess(token) {
+                console.log('reCAPTCHA verified');
+                document.getElementById('g-recaptcha-response').value = token;
+            }
+            
+            function onRecaptchaExpired() {
+                console.log('reCAPTCHA expired');
+                document.getElementById('g-recaptcha-response').value = '';
+            }
+            
+            function onRecaptchaError() {
+                console.error('reCAPTCHA error');
+                document.getElementById('g-recaptcha-response').value = '';
+            }
+            
+            // This function will be called when reCAPTCHA loads
+            function onRecaptchaLoad() {
+                console.log('reCAPTCHA v2 loaded');
+                // The reCAPTCHA v2 widget will auto-render
+            }
+        </script>
+        <!-- Load reCAPTCHA v2 -->
+        <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+    }
+    
     <script>
+        // Function to handle form submission with reCAPTCHA validation
+        $(document).ready(function() {
+            const $commentForm = $('#commentForm');
+            const $submitButton = $('#submitComment');
+            const $spinner = $submitButton.find('.spinner-border');
+            
+            // Store original button HTML
+            const originalButtonHtml = $submitButton.html();
+            
+            // Function to submit the form
+            function submitForm() {
+                // Disable submit button and show spinner
+                $submitButton.prop('disabled', true);
+                $spinner.removeClass('d-none');
+                
+                // Clear any previous error messages
+                $('#commentError').addClass('d-none');
+                
+                // Check if reCAPTCHA is enabled and completed
+                const recaptchaResponse = document.getElementById('g-recaptcha-response').value;
+                const recaptchaSiteKey = '@(ViewData["RecaptchaSiteKey"]?.ToString() ?? "")';
+                
+                if (recaptchaSiteKey && !recaptchaResponse) {
+                    // Show error and scroll to reCAPTCHA
+                    const errorMsg = 'Please complete the reCAPTCHA verification.';
+                    const $error = $('#commentError').text(errorMsg).removeClass('d-none');
+                    
+                    // Scroll to reCAPTCHA
+                    $('html, body').animate({
+                        scrollTop: $('.g-recaptcha').offset().top - 100
+                    }, 500);
+                    
+                    $submitButton.prop('disabled', false);
+                    $spinner.addClass('d-none');
+                    return;
+                }
+                
+                // Add reCAPTCHA response to form data if available
+                let formData = $commentForm.serializeArray();
+                if (recaptchaResponse) {
+                    formData.push({ name: 'g-recaptcha-response', value: recaptchaResponse });
+                }
+                
+                // Submit the form via AJAX
+                $.ajax({
+                    url: $commentForm.attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            onCommentSuccess(response);
+                            // Reset reCAPTCHA after successful submission
+                            if (typeof grecaptcha !== 'undefined') {
+                                grecaptcha.reset();
+                            }
+                        } else {
+                            onCommentFailure(response);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        onCommentFailure({ message: 'An error occurred while submitting your comment. Please try again.' });
+                    },
+                    complete: function() {
+                        // Re-enable submit button and hide spinner
+                        $submitButton.prop('disabled', false);
+                        $spinner.addClass('d-none');
+                    }
+                });
+            }
+            
+            // Handle form submission
+            $commentForm.on('submit', function(e) {
+                e.preventDefault();
+                
+                // Check if reCAPTCHA is enabled
+                @if (ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString()))
+                {
+                    @:if (typeof grecaptcha === 'undefined') {
+                    @:    // If reCAPTCHA isn't loaded yet, store the submission and wait for it
+                    @:    window.pendingFormSubmission = submitForm;
+                    @:    return false;
+                    @:}
+                    @:
+                    @:// Check if reCAPTCHA is completed
+                    @:const recaptchaResponse = grecaptcha.getResponse();
+                    @:if (!recaptchaResponse) {
+                    @:    // Show error message
+                    @:    $('.field-validation-valid[data-valmsg-for="g-recaptcha-response"]')
+                    @:        .addClass('field-validation-error')
+                    @:        .removeClass('field-validation-valid')
+                    @:        .html('Please complete the reCAPTCHA.');
+                    @:    return false;
+                    @:}
+                }
+                
+                // If we get here, either reCAPTCHA is not enabled or it's completed
+                submitForm();
+            });
+            
+            // Set a timeout to check if reCAPTCHA loaded
+            if (typeof grecaptcha === 'undefined') {
+                setTimeout(function() {
+                    if (typeof grecaptcha === 'undefined') {
+                        console.error('reCAPTCHA failed to load');
+                        // Show error to user
+                        const errorHtml = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                reCAPTCHA failed to load. Please refresh the page or check your connection.
+                            </div>
+                        `;
+                        $('.g-recaptcha').closest('.form-group').html(errorHtml);
+                    }
+                }, 10000); // 10 seconds timeout
+            }
+        });
+        
         function onCommentSuccess(response) {
             if (response.success) {
-                // Reset form
+                // Reset form and reCAPTCHA
                 $('#commentForm')[0].reset();
+                if (typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset();
+                }
                 
                 // Show success message
                 $('#commentError').addClass('d-none');
@@ -306,31 +486,50 @@
             $('.comment-count').text(`Comments (${topLevelCount})`);
         }
 
+        // Initialize event handlers only once
+        var eventHandlersInitialized = false;
+        
         function wireReplyButtons() {
-            // Reply to a comment
-            $(document).off('click', '.comment-reply-btn').on('click', '.comment-reply-btn', function() {
-                const $item = $(this).closest('.comment-item');
-                const id = $item.data('comment-id');
-                const name = $item.data('author-name');
-                $('#parentCommentId').val(id);
-                $('#replyingToName').text(name);
-                $('#replyingTo').removeClass('d-none');
-                $('#commentContent').focus();
-            });
-            // Load more replies
-            $(document).off('click', '.load-more-replies').on('click', '.load-more-replies', function(){
-                const parentId = $(this).data('parent-id');
-                const $btn = $(this);
-                $.ajax({
-                    url: '@Url.Action("RepliesPartial", "Blog")',
-                    data: { postId: @Model.Post.Id, parentCommentId: parentId, baseLevel: 1, _ts: Date.now() },
-                    cache: false
-                }).done(function(html){
-                    const $container = $(`.comment-replies[data-parent-id='${parentId}']`);
-                    $container.html(html);
-                    $btn.remove();
+            if (!eventHandlersInitialized) {
+                // Reply to a comment - use event delegation, attach only once
+                $(document).on('click', '.comment-reply-btn', function() {
+                    const $item = $(this).closest('.comment-item');
+                    const id = $item.data('comment-id');
+                    const name = $item.data('author-name');
+                    $('#parentCommentId').val(id);
+                    $('#replyingToName').text(name);
+                    $('#replyingTo').removeClass('d-none');
+                    $('#commentContent').focus();
                 });
-            });
+                
+                // Load more replies - use event delegation, attach only once
+                $(document).on('click', '.load-more-replies', function(){
+                    const parentId = $(this).data('parent-id');
+                    const $btn = $(this);
+                    const $container = $(`.comment-replies[data-parent-id='${parentId}']`);
+                    
+                    // Prevent multiple clicks
+                    if ($btn.prop('disabled')) {
+                        return;
+                    }
+                    $btn.prop('disabled', true);
+                    
+                    $.ajax({
+                        url: '@Url.Action("RepliesPartial", "Blog")',
+                        data: { postId: @Model.Post.Id, parentCommentId: parentId, baseLevel: 1, _ts: Date.now() },
+                        cache: false
+                    }).done(function(html){
+                        // Clear existing content before adding new content
+                        $container.empty();
+                        $container.html(html);
+                        $btn.remove();
+                    }).fail(function(){
+                        $btn.prop('disabled', false);
+                    });
+                });
+                
+                eventHandlersInitialized = true;
+            }
         }
 
         function loadComments(page) {

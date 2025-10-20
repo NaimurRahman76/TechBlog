@@ -13,6 +13,7 @@ using TechBlog.Core.DTOs;
 using TechBlog.Core.Entities;
 using TechBlog.Core.Exceptions;
 using TechBlog.Core.Interfaces;
+using TechBlog.Core.Interfaces.Services;
 using TechBlog.Web.Controllers;
 using TechBlog.Web.Models;
 using Xunit;
@@ -29,6 +30,7 @@ namespace TechBlog.Tests.Unit.Controllers
         private readonly Mock<ICommentService> _mockCommentService;
         private readonly Mock<IWorkContext> _mockWorkContext;
         private readonly Mock<ILogger<BlogController>> _mockLogger;
+        private readonly Mock<IRecaptchaService> _mockRecaptchaService;
         private readonly BlogController _controller;
         private readonly ApplicationUser _testUser;
 
@@ -38,6 +40,7 @@ namespace TechBlog.Tests.Unit.Controllers
             _mockCommentService = new Mock<ICommentService>();
             _mockWorkContext = new Mock<IWorkContext>();
             _mockLogger = new Mock<ILogger<BlogController>>();
+            _mockRecaptchaService = new Mock<IRecaptchaService>();
             
             _testUser = new ApplicationUser
             {
@@ -46,6 +49,10 @@ namespace TechBlog.Tests.Unit.Controllers
                 Email = "testuser@example.com"
             };
 
+            // Setup default recaptcha verification to return true
+            _mockRecaptchaService.Setup(x => x.VerifyCaptchaAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(true);
+
             _controller = new BlogController(
                 _mockBlogService.Object,
                 Mock.Of<ICategoryService>(),
@@ -53,7 +60,8 @@ namespace TechBlog.Tests.Unit.Controllers
                 _mockCommentService.Object,
                 _mockWorkContext.Object,
                 Mock.Of<IMapper>(),
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockRecaptchaService.Object);
 
             // Setup controller context for user identity
             var user = new ClaimsPrincipal(new ClaimsIdentity(
@@ -99,6 +107,22 @@ namespace TechBlog.Tests.Unit.Controllers
                 Content = comment.Content
             };
 
+            // Add recaptcha response to form data
+            var formCollection = new FormCollection(
+                new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+                {
+                    { "g-recaptcha-response", "test-recaptcha-response" }
+                });
+
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = _controller.ControllerContext.HttpContext.User,
+                    Request = { Form = formCollection }
+                }
+            };
+
             // Act
             var result = await _controller.AddComment(model);
 
@@ -108,7 +132,7 @@ namespace TechBlog.Tests.Unit.Controllers
             Assert.True((bool)response.GetType().GetProperty("success").GetValue(response));
             
             _mockCommentService.Verify(s => s.CreateCommentAsync(It.Is<Comment>(c => 
-                c.Content == comment.Content &&
+                c.Content == model.Content &&
                 c.AuthorId == _testUser.Id &&
                 c.IsApproved == true)), 
                 Times.Once);

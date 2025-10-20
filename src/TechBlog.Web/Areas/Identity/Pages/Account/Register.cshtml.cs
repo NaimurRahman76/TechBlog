@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using TechBlog.Core.Entities;
+using TechBlog.Core.Interfaces.Services;
+using TechBlog.Web.Filters;
 
 namespace TechBlog.Web.Areas.Identity.Pages.Account
 {
@@ -25,18 +27,21 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
         private readonly IUserStore<ApplicationUser> _userStore;
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
+        private readonly IRecaptchaService _recaptchaService;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             SignInManager<ApplicationUser> signInManager,
-            ILogger<RegisterModel> logger)
+            ILogger<RegisterModel> logger,
+            IRecaptchaService recaptchaService)
         {
             _userManager = userManager;
             _userStore = userStore;
             _emailStore = GetEmailStore();
             _signInManager = signInManager;
             _logger = logger;
+            _recaptchaService = recaptchaService;
         }
 
         [BindProperty]
@@ -75,21 +80,65 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
             public string ConfirmPassword { get; set; } = string.Empty;
         }
 
-        public async Task OnGetAsync(string? returnUrl = null)
+        public async Task OnGetAsync(string returnUrl = null)
         {
             ReturnUrl = returnUrl;
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            
+            // Add reCAPTCHA site key to ViewData
+            var recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+            if (recaptchaSettings != null && recaptchaSettings.IsEnabled)
+            {
+                ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+            }
         }
 
-        public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+        public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             
+            // Check reCAPTCHA if enabled
+            var recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+            bool recaptchaEnabled = recaptchaSettings?.IsEnabled == true &&
+                                 recaptchaSettings.EnableForRegistration &&
+                                 !string.IsNullOrEmpty(recaptchaSettings.SiteKey) &&
+                                 !string.IsNullOrEmpty(recaptchaSettings.SecretKey);
+
+            if (recaptchaEnabled)
+            {
+                var recaptchaResponse = Request.Form["g-recaptcha-response"];
+                if (string.IsNullOrEmpty(recaptchaResponse))
+                {
+                    ModelState.AddModelError(string.Empty, "Please complete the reCAPTCHA validation.");
+                    ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                    return Page();
+                }
+
+                try
+                {
+                    var isValid = await _recaptchaService.VerifyCaptchaAsync(recaptchaResponse, "register");
+                    if (!isValid)
+                    {
+                        _logger.LogWarning("reCAPTCHA validation failed for registration attempt from {Email}", Input.Email);
+                        ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
+                        ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                        return Page();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error validating reCAPTCHA for registration");
+                    ModelState.AddModelError(string.Empty, "Error validating reCAPTCHA. Please try again.");
+                    ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+                    return Page();
+                }
+            }
+            // Continue with the registration process if reCAPTCHA validation passes
+            
             if (ModelState.IsValid)
             {
                 var user = CreateUser();
-
                 user.FirstName = Input.FirstName;
                 user.LastName = Input.LastName;
                 user.EmailConfirmed = true; // Auto-confirm for demo purposes
@@ -119,7 +168,13 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
                 }
             }
 
-            // If we got this far, something failed, redisplay form
+            // If we got this far, something failed, redisplay form with reCAPTCHA key
+            recaptchaSettings = await _recaptchaService.GetSettingsAsync();
+            if (recaptchaSettings != null && recaptchaSettings.IsEnabled)
+            {
+                ViewData["RecaptchaSiteKey"] = recaptchaSettings.SiteKey;
+            }
+            
             return Page();
         }
 
