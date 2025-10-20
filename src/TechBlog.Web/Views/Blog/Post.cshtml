@@ -186,10 +186,40 @@
     @if (ViewData["RecaptchaSiteKey"] != null && !string.IsNullOrEmpty(ViewData["RecaptchaSiteKey"]?.ToString()))
     {
         <script>
+            var recaptchaWidgetId;
+            var recaptchaRendered = false;
             // This function will be called when reCAPTCHA loads
             function onRecaptchaLoad() {
-                console.log('reCAPTCHA loaded');
-                // The reCAPTCHA v2 widget will auto-render
+                console.log('reCAPTCHA API loaded');
+                
+                // Prevent multiple renders
+                if (recaptchaRendered) {
+                    console.log('reCAPTCHA already rendered, skipping');
+                    return;
+                }
+                
+                var recaptchaContainer = document.querySelector('.g-recaptcha');
+                if (recaptchaContainer) {
+                    // Check if container already has a widget
+                    if (recaptchaContainer.hasChildNodes() && recaptchaContainer.children.length > 0) {
+                        console.log('reCAPTCHA container already has content, skipping render');
+                        recaptchaRendered = true;
+                        return;
+                    }
+                    
+                    try {
+                        recaptchaWidgetId = grecaptcha.render(recaptchaContainer, {
+                            'sitekey': recaptchaContainer.getAttribute('data-sitekey'),
+                            'callback': onRecaptchaSuccess,
+                            'expired-callback': onRecaptchaExpired,
+                            'error-callback': onRecaptchaError
+                        });
+                        recaptchaRendered = true;
+                        console.log('reCAPTCHA widget rendered with ID:', recaptchaWidgetId);
+                    } catch (error) {
+                        console.error('Error rendering reCAPTCHA:', error);
+                    }
+                }
             }
         </script>
         <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
@@ -292,9 +322,13 @@
                         document.getElementById('parentCommentId').value = '';
                         document.getElementById('replyingTo').classList.add('d-none');
                         // Reset reCAPTCHA if it exists
-                        if (typeof grecaptcha !== 'undefined' && grecaptcha.reset) {
-                            grecaptcha.reset();
-                            document.getElementById('g-recaptcha-response').value = '';
+                        if (typeof grecaptcha !== 'undefined' && typeof recaptchaWidgetId !== 'undefined' && recaptchaWidgetId !== null) {
+                            try {
+                                grecaptcha.reset(recaptchaWidgetId);
+                                document.getElementById('g-recaptcha-response').value = '';
+                            } catch (error) {
+                                console.error('Error resetting reCAPTCHA:', error);
+                            }
                         }
                         // Reload the page to show the new comment
                         setTimeout(() => window.location.reload(), 1500);

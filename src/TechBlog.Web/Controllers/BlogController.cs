@@ -139,6 +139,9 @@ namespace TechBlog.Web.Controllers
                 commentsToShow = approved;
             }
 
+            foreach (var c in commentsToShow)
+                c.Replies = null;
+
             // Build a threaded tree so replies render under their parents
             var byId = commentsToShow.ToDictionary(c => c.Id);
             var roots = new List<Comment>();
@@ -173,14 +176,12 @@ namespace TechBlog.Web.Controllers
                         BlogPostId = n.BlogPostId,
                         CreatedAt = n.CreatedAt,
                         UpdatedAt = n.UpdatedAt,
-                        ReplyCount = totalReplies
+                        ReplyCount = totalReplies,
+                        Replies = n.Replies != null? MapTree(replyPreviewSize.HasValue
+                                ? n.Replies.OrderByDescending(r => r.CreatedAt).Take(replyPreviewSize.Value)
+                                : n.Replies.OrderByDescending(r => r.CreatedAt)).ToList() : new List<CommentDto>()
                     };
-                    if (n.Replies != null && n.Replies.Any())
-                    {
-                        var ordered = n.Replies.OrderByDescending(r => r.CreatedAt);
-                        var limited = replyPreviewSize.HasValue ? ordered.Take(replyPreviewSize.Value) : ordered;
-                        dto.Replies = MapTree(limited).ToList();
-                    }
+                    
                     yield return dto;
                 }
             }

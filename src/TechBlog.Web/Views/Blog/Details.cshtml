@@ -486,31 +486,50 @@
             $('.comment-count').text(`Comments (${topLevelCount})`);
         }
 
+        // Initialize event handlers only once
+        var eventHandlersInitialized = false;
+        
         function wireReplyButtons() {
-            // Reply to a comment
-            $(document).off('click', '.comment-reply-btn').on('click', '.comment-reply-btn', function() {
-                const $item = $(this).closest('.comment-item');
-                const id = $item.data('comment-id');
-                const name = $item.data('author-name');
-                $('#parentCommentId').val(id);
-                $('#replyingToName').text(name);
-                $('#replyingTo').removeClass('d-none');
-                $('#commentContent').focus();
-            });
-            // Load more replies
-            $(document).off('click', '.load-more-replies').on('click', '.load-more-replies', function(){
-                const parentId = $(this).data('parent-id');
-                const $btn = $(this);
-                $.ajax({
-                    url: '@Url.Action("RepliesPartial", "Blog")',
-                    data: { postId: @Model.Post.Id, parentCommentId: parentId, baseLevel: 1, _ts: Date.now() },
-                    cache: false
-                }).done(function(html){
-                    const $container = $(`.comment-replies[data-parent-id='${parentId}']`);
-                    $container.html(html);
-                    $btn.remove();
+            if (!eventHandlersInitialized) {
+                // Reply to a comment - use event delegation, attach only once
+                $(document).on('click', '.comment-reply-btn', function() {
+                    const $item = $(this).closest('.comment-item');
+                    const id = $item.data('comment-id');
+                    const name = $item.data('author-name');
+                    $('#parentCommentId').val(id);
+                    $('#replyingToName').text(name);
+                    $('#replyingTo').removeClass('d-none');
+                    $('#commentContent').focus();
                 });
-            });
+                
+                // Load more replies - use event delegation, attach only once
+                $(document).on('click', '.load-more-replies', function(){
+                    const parentId = $(this).data('parent-id');
+                    const $btn = $(this);
+                    const $container = $(`.comment-replies[data-parent-id='${parentId}']`);
+                    
+                    // Prevent multiple clicks
+                    if ($btn.prop('disabled')) {
+                        return;
+                    }
+                    $btn.prop('disabled', true);
+                    
+                    $.ajax({
+                        url: '@Url.Action("RepliesPartial", "Blog")',
+                        data: { postId: @Model.Post.Id, parentCommentId: parentId, baseLevel: 1, _ts: Date.now() },
+                        cache: false
+                    }).done(function(html){
+                        // Clear existing content before adding new content
+                        $container.empty();
+                        $container.html(html);
+                        $btn.remove();
+                    }).fail(function(){
+                        $btn.prop('disabled', false);
+                    });
+                });
+                
+                eventHandlersInitialized = true;
+            }
         }
 
         function loadComments(page) {
