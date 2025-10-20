@@ -11,6 +11,11 @@ namespace TechBlog.Core.Interfaces.Services
         Task<bool> SendEmailVerificationAsync(string email, string userName, string verificationLink);
         
         /// <summary>
+        /// Sends a password reset link to the user
+        /// </summary>
+        Task<bool> SendPasswordResetAsync(string email, string userName, string resetLink);
+        
+        /// <summary>
         /// Sends a generic email
         /// </summary>
         Task<bool> SendEmailAsync(string toEmail, string subject, string htmlBody, string plainTextBody = null);

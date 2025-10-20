@@ -60,6 +60,9 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
                 .Setup(x => x.SendEmailVerificationAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(true);
             mockEmailService
+                .Setup(x => x.SendPasswordResetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(true);
+            mockEmailService
                 .Setup(x => x.GetSettingsAsync())
                 .ReturnsAsync(new EmailSettings
                 {
@@ -69,7 +72,8 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
                     FromEmail = "test@test.com",
                     FromName = "Test",
                     IsEnabled = false, // Disabled for testing
-                    EnableEmailVerification = false
+                    EnableEmailVerification = false,
+                    PasswordResetLinkExpirationHours = 1
                 });
 
             // Remove the existing IEmailService registration if it exists

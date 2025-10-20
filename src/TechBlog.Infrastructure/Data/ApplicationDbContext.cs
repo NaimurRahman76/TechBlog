@@ -91,6 +91,7 @@ namespace TechBlog.Infrastructure.Data
                     EnableEmailVerification = true,
                     IsEnabled = false,
                     VerificationLinkExpirationHours = 24,
+                    PasswordResetLinkExpirationHours = 1,
                     CreatedAt = DateTime.UtcNow
                 });
 

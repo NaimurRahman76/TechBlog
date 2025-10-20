@@ -151,6 +151,14 @@
                                     <div class="form-text">How long the verification link remains valid (1-72 hours)</div>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label asp-for="PasswordResetLinkExpirationHours" class="form-label">Password Reset Link Expiration (hours)</label>
+                                    <input type="number" class="form-control" asp-for="PasswordResetLinkExpirationHours" min="1" max="72">
+                                    <span asp-validation-for="PasswordResetLinkExpirationHours" class="text-danger"></span>
+                                    <div class="form-text">How long the password reset link remains valid (1-72 hours)</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -52,6 +52,10 @@ namespace TechBlog.Core.Entities
         [Display(Name = "Verification Link Expiration (hours)")]
         public int VerificationLinkExpirationHours { get; set; } = 24;
         
+        [Range(1, 72)]
+        [Display(Name = "Password Reset Link Expiration (hours)")]
+        public int PasswordResetLinkExpirationHours { get; set; } = 1;
+        
         [Display(Name = "Created At")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         

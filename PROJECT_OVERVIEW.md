@@ -103,9 +103,11 @@ ASP.NET Core MVC web application with admin and public areas.
 5. **Email System**
    - SMTP email configuration
    - Email verification for new users
+   - Password reset via email
    - Customizable email templates
    - Test email functionality
    - Admin panel for email settings
+   - Configurable link expiration
 
 ## Configuration
 - Database connection strings in `appsettings.json`
@@ -159,11 +161,13 @@ ASP.NET Core MVC web application with admin and public areas.
 
 ## Recent Updates
 - ✅ Email verification system implemented
+- ✅ Password reset (forgot password) feature implemented
 - ✅ Admin email configuration panel added
 - ✅ Resend verification link functionality
 - ✅ Professional HTML email templates
-- ✅ Comprehensive unit and integration tests
+- ✅ Comprehensive unit and integration tests (41 tests total)
 - ✅ Email service with SMTP support
+- ✅ Secure token-based password reset
 
 ## Future Enhancements
 - Full-text search

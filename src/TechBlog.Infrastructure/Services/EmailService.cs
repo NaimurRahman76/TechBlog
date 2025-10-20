@@ -38,6 +38,23 @@ namespace TechBlog.Infrastructure.Services
             return await SendEmailAsync(email, subject, htmlBody, plainTextBody);
         }
 
+        public async Task<bool> SendPasswordResetAsync(string email, string userName, string resetLink)
+        {
+            var settings = await GetSettingsAsync();
+            
+            if (settings == null || !settings.IsEnabled)
+            {
+                _logger.LogWarning("Email service is disabled or settings not configured");
+                return false;
+            }
+
+            var subject = "Reset Your Password - TechBlog";
+            var htmlBody = GetPasswordResetTemplate(userName, resetLink, settings.PasswordResetLinkExpirationHours);
+            var plainTextBody = $"Hello {userName},\n\nWe received a request to reset your password. Click the following link to reset your password:\n{resetLink}\n\nThis link will expire in {settings.PasswordResetLinkExpirationHours} hour(s).\n\nIf you did not request a password reset, please ignore this email or contact support if you have concerns.\n\nBest regards,\nTechBlog Team";
+
+            return await SendEmailAsync(email, subject, htmlBody, plainTextBody);
+        }
+
         public async Task<bool> SendEmailAsync(string toEmail, string subject, string htmlBody, string plainTextBody = null)
         {
             try
@@ -146,6 +163,7 @@ namespace TechBlog.Infrastructure.Services
                 existingSettings.EnableEmailVerification = settings.EnableEmailVerification;
                 existingSettings.IsEnabled = settings.IsEnabled;
                 existingSettings.VerificationLinkExpirationHours = settings.VerificationLinkExpirationHours;
+                existingSettings.PasswordResetLinkExpirationHours = settings.PasswordResetLinkExpirationHours;
                 existingSettings.UpdatedAt = DateTime.UtcNow;
             }
             
@@ -237,6 +255,96 @@ namespace TechBlog.Infrastructure.Services
                         <td style='background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e9ecef;'>
                             <p style='color: #999999; font-size: 12px; margin: 0;'>
                                 &copy; {DateTime.UtcNow.Year} TechBlog. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetPasswordResetTemplate(string userName, string resetLink, int expirationHours)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Reset Your Password</title>
+</head>
+<body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;'>
+    <table width='100%' cellpadding='0' cellspacing='0' style='background-color: #f4f4f4; padding: 20px;'>
+        <tr>
+            <td align='center'>
+                <table width='600' cellpadding='0' cellspacing='0' style='background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                    <!-- Header -->
+                    <tr>
+                        <td style='background-color: #dc3545; padding: 30px; text-align: center;'>
+                            <h1 style='color: #ffffff; margin: 0; font-size: 28px;'>TechBlog</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style='padding: 40px 30px;'>
+                            <h2 style='color: #333333; margin-top: 0;'>Hello {userName}!</h2>
+                            <p style='color: #666666; font-size: 16px; line-height: 1.6;'>
+                                We received a request to reset your password for your TechBlog account. 
+                                If you made this request, click the button below to reset your password.
+                            </p>
+                            
+                            <table width='100%' cellpadding='0' cellspacing='0' style='margin: 30px 0;'>
+                                <tr>
+                                    <td align='center'>
+                                        <a href='{resetLink}' 
+                                           style='display: inline-block; padding: 14px 40px; background-color: #dc3545; 
+                                                  color: #ffffff; text-decoration: none; border-radius: 4px; 
+                                                  font-size: 16px; font-weight: bold;'>
+                                            Reset Password
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style='color: #666666; font-size: 14px; line-height: 1.6;'>
+                                If the button doesn't work, you can copy and paste the following link into your browser:
+                            </p>
+                            <p style='color: #dc3545; font-size: 14px; word-break: break-all;'>
+                                {resetLink}
+                            </p>
+                            
+                            <div style='background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 30px 0;'>
+                                <p style='color: #856404; font-size: 14px; margin: 0; line-height: 1.6;'>
+                                    <strong>⚠️ Important:</strong> This password reset link will expire in {expirationHours} hour(s) for security reasons.
+                                </p>
+                            </div>
+                            
+                            <div style='background-color: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 30px 0;'>
+                                <p style='color: #721c24; font-size: 14px; margin: 0; line-height: 1.6;'>
+                                    <strong>🔒 Security Notice:</strong> If you did not request a password reset, please ignore this email. 
+                                    Your password will remain unchanged. If you're concerned about your account security, please contact our support team immediately.
+                                </p>
+                            </div>
+                            
+                            <p style='color: #666666; font-size: 14px; line-height: 1.6;'>
+                                For security reasons, we never include passwords in emails. After clicking the reset link, 
+                                you'll be able to create a new password for your account.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style='background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e9ecef;'>
+                            <p style='color: #999999; font-size: 12px; margin: 0;'>
+                                &copy; {DateTime.UtcNow.Year} TechBlog. All rights reserved.
+                            </p>
+                            <p style='color: #999999; font-size: 11px; margin: 10px 0 0 0;'>
+                                This is an automated email. Please do not reply to this message.
                             </p>
                         </td>
                     </tr>
