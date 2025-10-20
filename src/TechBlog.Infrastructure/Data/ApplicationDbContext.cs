@@ -20,6 +20,7 @@ namespace TechBlog.Infrastructure.Data
         public DbSet<Comment> Comments { get; set; }
         public DbSet<LogEntry> LogEntries { get; set; }
         public DbSet<RecaptchaSettings> RecaptchaSettings { get; set; }
+        public DbSet<EmailSettings> EmailSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -72,6 +73,24 @@ namespace TechBlog.Infrastructure.Data
                     EnableForRegistration = false,
                     EnableForComments = false,
                     ScoreThreshold = 0.5f,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+            // Configure EmailSettings to have a single row
+            modelBuilder.Entity<EmailSettings>()
+                .HasData(new EmailSettings
+                {
+                    Id = 1,
+                    SmtpHost = "smtp.gmail.com",
+                    SmtpPort = 587,
+                    FromEmail = "noreply@techblog.com",
+                    FromName = "TechBlog",
+                    Username = "",
+                    Password = "",
+                    EnableSsl = true,
+                    EnableEmailVerification = true,
+                    IsEnabled = false,
+                    VerificationLinkExpirationHours = 24,
                     CreatedAt = DateTime.UtcNow
                 });
 

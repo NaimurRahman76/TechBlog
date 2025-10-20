@@ -28,13 +28,15 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IRecaptchaService _recaptchaService;
+        private readonly IEmailService _emailService;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             SignInManager<ApplicationUser> signInManager,
             ILogger<RegisterModel> logger,
-            IRecaptchaService recaptchaService)
+            IRecaptchaService recaptchaService,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -42,6 +44,7 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _recaptchaService = recaptchaService;
+            _emailService = emailService;
         }
 
         [BindProperty]
@@ -141,7 +144,13 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
                 var user = CreateUser();
                 user.FirstName = Input.FirstName;
                 user.LastName = Input.LastName;
-                user.EmailConfirmed = true; // Auto-confirm for demo purposes
+                
+                // Check if email verification is enabled
+                var emailSettings = await _emailService.GetSettingsAsync();
+                bool requireEmailVerification = emailSettings?.IsEnabled == true && 
+                                               emailSettings.EnableEmailVerification;
+                
+                user.EmailConfirmed = !requireEmailVerification; // Only auto-confirm if verification is disabled
 
                 await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
@@ -157,9 +166,40 @@ namespace TechBlog.Web.Areas.Identity.Pages.Account
 
                     var userId = await _userManager.GetUserIdAsync(user);
                     
-                    // Auto sign-in the user after registration
-                    await _signInManager.SignInAsync(user, isPersistent: false);
-                    return LocalRedirect(returnUrl);
+                    // Send email verification if enabled
+                    if (requireEmailVerification)
+                    {
+                        var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+                        var callbackUrl = Url.Page(
+                            "/Account/ConfirmEmail",
+                            pageHandler: null,
+                            values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
+                            protocol: Request.Scheme);
+
+                        var emailSent = await _emailService.SendEmailVerificationAsync(
+                            Input.Email,
+                            $"{user.FirstName} {user.LastName}",
+                            callbackUrl);
+
+                        if (emailSent)
+                        {
+                            _logger.LogInformation("Email verification sent to {Email}", Input.Email);
+                            TempData["SuccessMessage"] = "Registration successful! Please check your email to verify your account.";
+                            return RedirectToPage("./RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to send verification email to {Email}", Input.Email);
+                            TempData["WarningMessage"] = "Account created but failed to send verification email. Please contact support.";
+                        }
+                    }
+                    else
+                    {
+                        // Auto sign-in the user after registration if email verification is disabled
+                        await _signInManager.SignInAsync(user, isPersistent: false);
+                        return LocalRedirect(returnUrl);
+                    }
                 }
                 
                 foreach (var error in result.Errors)
